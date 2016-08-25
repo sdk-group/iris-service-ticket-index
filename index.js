@@ -1,1 +1,1 @@
-module.exports = require("./build/ticket-indexBox");
+module.exports = require("./build/ticket-index");
