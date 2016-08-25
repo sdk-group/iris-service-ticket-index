@@ -14,6 +14,6 @@ module.exports = {
 	tasks: tasks,
 	events: {
 		group: 'ticket-index',
-		shorthands: events.ticket-index_box
+		shorthands: events['ticket-index']
 	}
 };

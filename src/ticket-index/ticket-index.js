@@ -12,7 +12,8 @@ class TicketIndex {
 	}
 
 	launch() {
-		return this.fillIndex().then(()=>true);
+		return this.fillIndex()
+			.then(() => true);
 	}
 
 	//API
@@ -24,49 +25,49 @@ class TicketIndex {
 			ticket
 		});
 		switch (ticket.state) {
-			case 'registered':
-				//inject
-				let [pb, lv] = _.partition(ticket_index[org_merged.id].live || [], t => _.isArray(t.time_description));
+		case 'registered':
+			//inject
+			let [pb, lv] = _.partition(ticket_index[org_merged.id].live || [], t => _.isArray(t.time_description));
+			ticket_index[org_merged.id].live = this.injectToIndex({
+				ticket,
+				start_time: moment.tz(org_merged.org_timezone)
+					.diff(moment.tz(org_merged.org_timezone)
+						.startOf('day'), 'seconds'),
+				tick_index: lv
+			});
+			_.map(pb, tick => {
 				ticket_index[org_merged.id].live = this.injectToIndex({
-					ticket,
+					ticket: tick,
 					start_time: moment.tz(org_merged.org_timezone)
 						.diff(moment.tz(org_merged.org_timezone)
 							.startOf('day'), 'seconds'),
-					tick_index: lv
+					tick_index: ticket_index[org_merged.id].live
 				});
-				_.map(pb, tick => {
-					ticket_index[org_merged.id].live = this.injectToIndex({
-						ticket: tick,
-						start_time: moment.tz(org_merged.org_timezone)
-							.diff(moment.tz(org_merged.org_timezone)
-								.startOf('day'), 'seconds'),
-						tick_index: ticket_index[org_merged.id].live
-					});
-				});
-				break;
-			case 'postponed':
-				ticket_index[org_merged.id].postponed = this.injectToIndex({
-					ticket,
-					start_time: moment.tz(org_merged.org_timezone)
-						.diff(moment.tz(org_merged.org_timezone)
-							.startOf('day'), 'seconds'),
-					tick_index: ticket_index[org_merged.id].postponed || []
-				});
-				break;
-			case 'processing':
-			case 'called':
-				//remove and remember
-				ticket_index[org_merged.id].operating = ticket_index[org_merged.id].operating || [];
-				ticket_index[org_merged.id].operating.push(ticket);
-				break;
-			case 'expired':
-			case 'removed':
-			case 'closed':
-				//remove permanently
-				break;
-			case 'booked':
-				//noop
-				break;
+			});
+			break;
+		case 'postponed':
+			ticket_index[org_merged.id].postponed = this.injectToIndex({
+				ticket,
+				start_time: moment.tz(org_merged.org_timezone)
+					.diff(moment.tz(org_merged.org_timezone)
+						.startOf('day'), 'seconds'),
+				tick_index: ticket_index[org_merged.id].postponed || []
+			});
+			break;
+		case 'processing':
+		case 'called':
+			//remove and remember
+			ticket_index[org_merged.id].operating = ticket_index[org_merged.id].operating || [];
+			ticket_index[org_merged.id].operating.push(ticket);
+			break;
+		case 'expired':
+		case 'removed':
+		case 'closed':
+			//remove permanently
+			break;
+		case 'booked':
+			//noop
+			break;
 		}
 	}
 
