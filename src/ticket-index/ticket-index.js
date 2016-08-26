@@ -1,6 +1,8 @@
 'use strict'
 
 let Indexer = require("./model/Indexer.js");
+let Session = require('ticket-session');
+let ticket_index = {};
 
 class TicketIndex {
 	constructor() {
@@ -12,23 +14,75 @@ class TicketIndex {
 	}
 
 	launch() {
-		return this.fillIndex()
+		this.emitter.listenTask('queue.emit.head', (data) => {
+			return this.actionActiveHead(data)
+				.then((res) => {
+					console.log("STRUCT", res);
+					_.map(res, (ws_head, ws_id) => {
+						_.map(ws_head, (head, user_id) => {
+							let to_join = ['queue.head', data.org_addr, ws_id];
+							let addr = {
+								user_id
+							};
+							console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
+							this.emitter.emit('broadcast', {
+								event: _.join(to_join, "."),
+								addr,
+								data: head
+							});
+						});
+					});
+					return Promise.resolve(true);
+				});
+		});
+
+
+		return this.fill()
 			.then(() => true);
 	}
 
 	//API
-	updateTicketIndex({
+
+	getDates({
+		dedicated_date,
+		tz,
+		offset = 0,
+		schedules
+	}) {
+		let dedicated = dedicated_date ? moment.tz(dedicated_date, tz) : moment.tz(tz);
+		let booking = moment.tz(tz);
+
+		let now = moment.tz(tz)
+			.diff(moment.tz(tz)
+				.startOf('day'), 'seconds');
+		let sch = _.find(_.castArray(schedules), (piece) => {
+			return !!~_.indexOf(piece.has_day, dedicated.format('dddd'));
+		});
+		let chunks = sch ? _.flatMap(sch.has_time_description, 'data.0') : [86400];
+		let today = booking.isSame(dedicated, 'day');
+		let start = today ? now + offset : _.min(chunks);
+		let td = [start, _.max(chunks)];
+		// console.log("DATES", dedicated_date, dedicated.format(), booking.format(), start, today);
+		return {
+			d_date: dedicated,
+			b_date: booking.format(),
+			today,
+			td
+		};
+	}
+
+	update({
 		ticket,
 		org_merged
 	}) {
-		this.removeFromIndex({
+		this.remove({
 			ticket
 		});
 		switch (ticket.state) {
 		case 'registered':
 			//inject
 			let [pb, lv] = _.partition(ticket_index[org_merged.id].live || [], t => _.isArray(t.time_description));
-			ticket_index[org_merged.id].live = this.injectToIndex({
+			ticket_index[org_merged.id].live = this.inject({
 				ticket,
 				start_time: moment.tz(org_merged.org_timezone)
 					.diff(moment.tz(org_merged.org_timezone)
@@ -36,7 +90,7 @@ class TicketIndex {
 				tick_index: lv
 			});
 			_.map(pb, tick => {
-				ticket_index[org_merged.id].live = this.injectToIndex({
+				ticket_index[org_merged.id].live = this.inject({
 					ticket: tick,
 					start_time: moment.tz(org_merged.org_timezone)
 						.diff(moment.tz(org_merged.org_timezone)
@@ -46,7 +100,7 @@ class TicketIndex {
 			});
 			break;
 		case 'postponed':
-			ticket_index[org_merged.id].postponed = this.injectToIndex({
+			ticket_index[org_merged.id].postponed = this.inject({
 				ticket,
 				start_time: moment.tz(org_merged.org_timezone)
 					.diff(moment.tz(org_merged.org_timezone)
@@ -71,10 +125,24 @@ class TicketIndex {
 		}
 	}
 
+	getTickets({
+		query,
+		keys
+	}) {
+		return this.emitter.addTask('ticket', {
+				_action: 'ticket',
+				query,
+				keys: _.castArray(keys)
+			})
+			.then(_.values);
+	}
 
-	fillIndex() {
+	fill() {
 		let orgs;
 		let tzs;
+		this.actionCreateSession({
+			tickets: []
+		})
 		return this.emitter.addTask('workstation', {
 				_action: 'organization-timezones'
 			})
@@ -106,7 +174,7 @@ class TicketIndex {
 							let postponed = ticks_grouped.postponed || [];
 							let operating = _.concat(ticks_grouped.called || [], ticks_grouped.processing || []);
 							_.map(_.sortBy(ticks_grouped.registered, t => _.isArray(t.time_description)) || [], (tick) => {
-								live = this.injectToIndex({
+								live = this.inject({
 									ticket: tick,
 									start_time: moment.tz(tzs[org])
 										.diff(moment.tz(tzs[org])
@@ -116,7 +184,7 @@ class TicketIndex {
 							});
 							console.log('live', _.map(live, 'label'));
 							_.map(ticks_grouped.postponed || [], (tick) => {
-								postponed = this.injectToIndex({
+								postponed = this.inject({
 									ticket: tick,
 									start_time: moment.tz(tzs[org])
 										.diff(moment.tz(tzs[org])
@@ -138,7 +206,7 @@ class TicketIndex {
 			})
 	}
 
-	injectToIndex({
+	inject({
 		ticket,
 		start_time,
 		tick_index
@@ -192,7 +260,7 @@ class TicketIndex {
 		return _.concat(before, ticket, after);
 	}
 
-	removeFromIndex({
+	remove({
 		ticket
 	}) {
 		ticket_index[ticket.org_destination] = _.mapValues(ticket_index[ticket.org_destination], (ticks) => {
@@ -200,7 +268,7 @@ class TicketIndex {
 		});
 	}
 
-	filterIndex({
+	filter({
 		service,
 		org_destination,
 		operator,
@@ -218,7 +286,7 @@ class TicketIndex {
 		return byservice;
 	}
 
-	transformIndexForHead({
+	transformForHead({
 		head,
 		size
 	}) {
@@ -235,7 +303,7 @@ class TicketIndex {
 		};
 	}
 
-	actualizeIndex({
+	actualize({
 		dedicated_date,
 		org_merged
 	}) {
@@ -243,13 +311,13 @@ class TicketIndex {
 			return _.filter(ticks, t => t.dedicated_date == dedicated_date.format('YYYY-MM-DD') || moment.isMoment(t.dedicated_date) && t.dedicated_date.isSame(dedicated_date, 'day'));
 		});
 		let prebooked = _.filter(ticket_index[org_merged.id].live, t => _.isArray(t.time_description));
-		_.map(prebooked, p => this.updateTicketIndex({
+		_.map(prebooked, p => this.updateTicket({
 			org_merged,
 			ticket: p
 		}));
 	}
 
-	actionActiveHeadFromIndex({
+	actionActiveHead({
 		org_merged,
 		size,
 		workstation,
@@ -259,13 +327,13 @@ class TicketIndex {
 			tz: org_merged.org_timezone,
 			schedules: org_merged.has_schedule.live
 		});
-		this.actualizeIndex({
+		this.actualize({
 			dedicated_date: dates.d_date,
 			org_merged
 		});
 		if (last) {
 			_.map(_.castArray(last), tick => {
-				this.updateTicketIndex({
+				this.update({
 					org_merged,
 					ticket: tick
 				});
@@ -292,7 +360,7 @@ class TicketIndex {
 					return _(receiver_data.occupied_by)
 						.castArray()
 						.reduce((acc, operator) => {
-							let head = this.filterIndex({
+							let head = this.filter({
 								org_destination: org_merged.id,
 								service: receiver_data.provides || services,
 								destination: receiver_data.id,
@@ -300,7 +368,7 @@ class TicketIndex {
 								now: dates.td[0],
 								prebook_show_interval: org_merged.prebook_show_interval
 							});
-							acc[operator] = this.transformIndexForHead({
+							acc[operator] = this.transformForHead({
 								head,
 								size
 							});
@@ -310,11 +378,11 @@ class TicketIndex {
 			});
 	}
 
-	actionHeadPositionFromIndex({
+	actionHeadPosition({
 		org_merged,
 		ticket
 	}) {
-		this.updateTicketIndex({
+		this.update({
 			org_merged,
 			ticket
 		});
@@ -323,7 +391,7 @@ class TicketIndex {
 			tz: org_merged.org_timezone,
 			schedules: org_merged.has_schedule.live
 		});
-		this.actualizeIndex({
+		this.actualize({
 			dedicated_date: dates.d_date,
 			org_merged
 		});
@@ -341,7 +409,7 @@ class TicketIndex {
 					.value();
 
 				return _.mapValues(receivers, (receiver_data, receiver_id) => {
-					let head = this.filterIndex({
+					let head = this.filter({
 						operator: receiver_data.occupied_by,
 						org_destination: org_merged.id,
 						service: receiver_data.provides || services,
@@ -354,7 +422,7 @@ class TicketIndex {
 			});
 	}
 
-	actionHeadFromIndex({
+	actionHead({
 		workstation,
 		operator,
 		org_merged,
@@ -372,7 +440,7 @@ class TicketIndex {
 				}))
 			.then((op) => {
 				let services = op.provides;
-				let head = this.filterIndex({
+				let head = this.filter({
 					org_destination: org_merged.id,
 					operator,
 					service: services,
@@ -380,12 +448,19 @@ class TicketIndex {
 					now,
 					prebook_show_interval: org_merged.prebook_show_interval
 				})
-				return this.transformIndexForHead({
+				return this.transformForHead({
 					head,
 					size
 				});
 			});
 	}
+
+	actionCreateSession({
+		tickets
+	}) {
+
+	}
+
 
 	serviceProviders({
 		organization
