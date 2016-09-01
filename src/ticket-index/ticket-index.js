@@ -1,23 +1,23 @@
 'use strict'
 
-let Indexer = require("./model/Indexer.js");
+let Index = require("./model/aggregator.js");
+let Filter = require("./model/filter.js");
 let Session = require('ticket-session');
 let ticket_index = {};
 
 class TicketIndex {
 	constructor() {
 		this.emitter = message_bus;
+		this.index = Index(message_bus);
 	}
 
-	init(cfg) {
-
-	}
+	init(cfg) {}
 
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			return this.actionActiveHead(data)
 				.then((res) => {
-					console.log("STRUCT", res);
+					console.log("STRUCT I", res);
 					_.map(res, (ws_head, ws_id) => {
 						_.map(ws_head, (head, user_id) => {
 							let to_join = ['queue.head', data.org_addr, ws_id];
@@ -140,70 +140,16 @@ class TicketIndex {
 	fill() {
 		let orgs;
 		let tzs;
-		this.actionCreateSession({
-			tickets: []
-		})
 		return this.emitter.addTask('workstation', {
-				_action: 'organization-timezones'
+				_action: 'organization-data'
 			})
 			.then(res => {
-				let todays = _(res)
-					.values()
-					.uniq()
-					.reduce((acc, t) => {
-						acc[t] = moment.tz(t)
-							.format("YYYY-MM-DD");
-						return acc;
-					}, {});
-				tzs = res;
 				orgs = _.keys(res);
-				return Promise.mapSeries(orgs, (org_destination) => {
-						return this.getTickets({
-							query: {
-								dedicated_date: todays[res[org_destination]],
-								org_destination,
-								state: ['registered', 'postponed', 'called', 'processing']
-							}
-						});
-					})
-					.then((res) => {
-						_.map(res, (ticks, index) => {
-							let org = orgs[index];
-							let ticks_grouped = _.groupBy(ticks, 'state');
-							let live = [];
-							let postponed = ticks_grouped.postponed || [];
-							let operating = _.concat(ticks_grouped.called || [], ticks_grouped.processing || []);
-							_.map(_.sortBy(ticks_grouped.registered, t => _.isArray(t.time_description)) || [], (tick) => {
-								live = this.inject({
-									ticket: tick,
-									start_time: moment.tz(tzs[org])
-										.diff(moment.tz(tzs[org])
-											.startOf('day'), 'seconds'),
-									tick_index: live
-								});
-							});
-							console.log('live', _.map(live, 'label'));
-							_.map(ticks_grouped.postponed || [], (tick) => {
-								postponed = this.inject({
-									ticket: tick,
-									start_time: moment.tz(tzs[org])
-										.diff(moment.tz(tzs[org])
-											.startOf('day'), 'seconds'),
-									tick_index: postponed
-								});
-							});
-							// console.log('p/p', _.map(postponed, 'label'));
-
-							ticket_index[org] = {
-								live,
-								postponed,
-								operating
-							};
-						});
-						// console.log(ticket_index);
-
-					});
-			})
+				this.index.dissect(orgs, _.mapValues(res, 'org_merged'));
+				return this.index.fill()
+					.then(() => this.index.render())
+					.then(() => this.index.order())
+			});
 	}
 
 	inject({
@@ -243,6 +189,7 @@ class TicketIndex {
 					}
 				}
 			} else {
+				//EJECT
 				if (ticket.priority_value > tick.priority_value || ticket.priority_value == tick.priority_value && moment(ticket.booking_date)
 					.unix() < moment(tick.booking_date)
 					.unix()) {
@@ -279,7 +226,7 @@ class TicketIndex {
 		let byservice = _.mapValues(ticket_index[org_destination], (ticks) => _.filter(ticks, t => !!~_.indexOf(service, t.service)));
 		byservice.operating = _.filter(byservice.operating, t => t.destination == destination && (!t.operator || !!~_.indexOf(_.castArray(operator), t.operator)));
 		byservice.live = _.filter(byservice.live, (t) => {
-			console.log("FILTER", now, t.time_description[0], (now + prebook_show_interval), operator, t.operator);
+			// console.log("FILTER", now, t.time_description[0], (now + prebook_show_interval), operator, t.operator);
 			if (t.operator && !~_.indexOf(_.castArray(operator), t.operator)) return false;
 			return !_.isArray(t.time_description) || t.time_description[0] <= (now + prebook_show_interval + 30);
 		});
@@ -360,14 +307,12 @@ class TicketIndex {
 					return _(receiver_data.occupied_by)
 						.castArray()
 						.reduce((acc, operator) => {
-							let head = this.filter({
-								org_destination: org_merged.id,
+							let head = this.index.filter({
+								organization: org_merged.id,
 								service: receiver_data.provides || services,
 								destination: receiver_data.id,
-								operator,
-								now: dates.td[0],
-								prebook_show_interval: org_merged.prebook_show_interval
-							});
+								operator: operator
+							})
 							acc[operator] = this.transformForHead({
 								head,
 								size
@@ -455,10 +400,10 @@ class TicketIndex {
 			});
 	}
 
-	actionCreateSession({
-		tickets
-	}) {
-
+	actionCreateSession(data) {
+		return this.index.createSession(data)
+			.then(session => this.index.saveSession(session))
+			.then(session => this.index.add(session));
 	}
 
 
