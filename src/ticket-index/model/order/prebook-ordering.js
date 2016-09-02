@@ -11,10 +11,7 @@ module.exports = function (start, source, params) {
 		j = 0,
 		timemarks = Array(l),
 		prebook_idx = [],
-		now = moment.tz(params.org_timezone)
-		.diff(moment.tz(params.org_timezone)
-			.startOf('day'), 'seconds'),
-		prev = now;
+		prev = params.now;
 
 	while (l--) {
 		if (source[start[i]].properties.booking_method == 'live') {

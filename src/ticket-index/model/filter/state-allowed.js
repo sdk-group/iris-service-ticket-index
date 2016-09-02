@@ -4,11 +4,11 @@ module.exports = function (prefiltered, source, params) {
 	let l = prefiltered.length,
 		i = 0,
 		src;
+
 	while (l--) {
 		if (!prefiltered[i]) continue;
 		src = source[prefiltered[i]];
-		if (src.properties.booking_method == 'prebook' &&
-			src.properties.time_description[0] > (params.now + params.prebook_show_interval + 30))
+		if (params.state !== '*' && !~params.state.indexOf(src.properties.state))
 			prefiltered[i] = false;
 		i++;
 	}

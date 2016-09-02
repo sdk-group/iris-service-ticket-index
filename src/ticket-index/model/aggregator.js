@@ -11,10 +11,10 @@ let AggregatorSection = require("./aggregator-section.js");
 //ORDER PRESERVED
 const indexers_config = {
 	order: {
-		default: ['live-ordering', 'prebook-ordering']
+		default: ['actualize', 'live-ordering', 'prebook-ordering']
 	},
 	filter: {
-		default: ['actualize', 'prebook-timing', 'service-allowed', 'workstation-provides', 'operator-provides']
+		default: ['state-allowed', 'prebook-timing', 'service-allowed', 'workstation-provides', 'operator-provides']
 	}
 };
 
@@ -59,12 +59,34 @@ class Aggregator {
 		return this.loadSessions();
 	}
 
-	order() {
+	addr(section) {
+		return this.section(section)
+			.addr();
+	}
+
+	active(section) {
+		return this.section(section)
+			.active();
+	}
+
+	order(params = {}) {
 		let l = this.data.length;
 		while (l--) {
 			this.data[l].order();
 		}
 		return this;
+	}
+
+	filter(params) {
+		return this.section(params.organization)
+			.filter(params);
+	}
+
+	updateLeaf(section, leaf) {
+		this.section(section)
+			.updateLeaf(leaf);
+		this.section(section)
+			.order();
 	}
 
 	loadSessions() {

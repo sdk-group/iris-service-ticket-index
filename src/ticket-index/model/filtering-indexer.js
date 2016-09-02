@@ -7,6 +7,16 @@ class FilteringIndexer extends Indexer {
 		super('filter', filters);
 	}
 
+	run(params, initial_idx) {
+		let res = super.run(params, initial_idx.slice());
+		let i, l = res.length,
+			compacted = [];
+		for (i = 0; i < l; i++) {
+			if (res[i] !== false)
+				compacted.push(res[i]);
+		}
+		return compacted;
+	}
 }
 
 module.exports = FilteringIndexer;
