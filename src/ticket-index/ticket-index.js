@@ -19,17 +19,17 @@ class TicketIndex {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			return this.actionActiveHead(data)
 				.then((res) => {
-					// console.log("STRUCT I", require('util')
-					// 	.inspect(res, {
-					// 		depth: null
-					// 	}));
+					console.log("STRUCT I", require('util')
+						.inspect(res, {
+							depth: null
+						}));
 					_.map(res, (ws_head, ws_id) => {
 						_.map(ws_head, (head, user_id) => {
 							let to_join = ['queue.head', this.index.addr(data.organization), ws_id];
 							let addr = {
 								user_id
 							};
-							// console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
+							console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
 							this.emitter.emit('broadcast', {
 								event: _.join(to_join, "."),
 								addr,
@@ -66,13 +66,13 @@ class TicketIndex {
 	}
 
 
-	transformForHead(
+	takeHead(
 		section,
-		indexes,
+		filter,
 		size
 	) {
 		let sz = _.isBoolean(size) ? size : size || this.queue_head_size || 5;
-		return this.dispenser.dispense(section, sz, indexes);
+		return this.dispenser.dispense(section, sz, filter);
 	}
 
 	actionActiveHead({
@@ -81,6 +81,7 @@ class TicketIndex {
 		workstation,
 		last = []
 	}) {
+		console.log("UPD", last);
 		let upd = (last.constructor === Array) ? last : [last];
 		_.map(upd, entity => {
 			this.index.updateLeaf(organization, entity);
@@ -105,13 +106,13 @@ class TicketIndex {
 					return _(receiver_data.occupied_by)
 						.castArray()
 						.reduce((acc, operator) => {
-							let head = this.index.filter({
+							let filter = {
 								organization: organization,
 								service: receiver_data.provides || services,
 								destination: receiver_data.id,
 								operator: operator
-							});
-							acc[operator] = this.transformForHead(organization, head, size);
+							};
+							acc[operator] = this.takeHead(organization, filter, size);
 							return acc;
 						}, {});
 				});
@@ -135,13 +136,13 @@ class TicketIndex {
 					.value();
 
 				return _.mapValues(receivers, (receiver_data, receiver_id) => {
-					let head = this.index.filter({
+					let filter = {
 						operator: receiver_data.occupied_by,
 						organization: organization,
 						service: receiver_data.provides || services,
 						destination: receiver_data.id
-					});
-					return this.dispenser.findIndex(organization, code, head);
+					};
+					return this.dispenser.findIndex(organization, code, filter);
 				});
 			});
 	}
@@ -162,13 +163,13 @@ class TicketIndex {
 					provides: srv
 				}))
 			.then((op) => {
-				let head = this.index.filter({
+				let filter = {
 					organization: organization,
 					service: op.provides,
 					destination: workstation,
 					operator: operator
-				});
-				return this.transformForHead(organization, head, size);
+				};
+				return this.takeHead(organization, filter, size);
 			});
 	}
 
@@ -197,7 +198,7 @@ class TicketIndex {
 		organization
 	}) {
 		// let active = this.index.active(organization);
-		return this.index.filter({
+		return this.index.filter(organization, {
 			organization: organization,
 			service: '*',
 			destination: workstation,
@@ -209,27 +210,56 @@ class TicketIndex {
 	actionNext({
 		workstation,
 		operator,
-		organization
+		organization,
+		services = []
 	}) {
-		return this.actionCurrent({
-				workstation,
-				operator,
-				organization
-			})
-			.then((active) => {
-				console.log("ACTIVE", active);
-				if (active.length > 0) {
-					let curr = active[0];
+		let srv = _.castArray(services);
+		let curr_tick, curr_session;
+		let current = this.actionCurrent({
+			workstation,
+			operator,
+			organization
+		});
+		let response = {
+			current: null,
+			next: null
+		};
 
-				}
-				let head = this.index.filter({
+		if (current.length > 0) {
+			console.log("ACTIVE", current);
+			curr_tick = this.index.ticket(organization, current[0]);
+			response.current = curr_tick;
+			console.log("CURR TICK", _.functionsIn(curr_tick));
+			curr_session = this.index.session(organization, curr_tick.properties.code);
+			response.next = curr_session.next();
+			console.log("ACTIVE SESSION", curr_session, response);
+		}
+		if (response.next)
+			return response;
+
+		return (_.isEmpty(srv) ? this.emitter.addTask('workstation', {
+					_action: 'workstation',
+					workstation
+				})
+				.then(res => res[workstation]) : Promise.resolve({
+					provides: srv
+				}))
+			.then((op) => {
+				let all = this.index.filter(organization, {
 					organization: organization,
 					service: op.provides,
 					destination: workstation,
-					operator: operator
+					operator: operator,
+					state: ['registered']
 				});
+				console.log("ALL", all);
+				let idx = (all.length > 0) ? all[0] : null;
+				if (idx !== null)
+					response.next = this.index.ticket(organization, idx);
+				return response;
 			});
 	}
+
 }
 
 module.exports = TicketIndex;

@@ -22,7 +22,6 @@ class Aggregator {
 	constructor(emitter) {
 		this.keymap = {};
 		this.data = [];
-		this.rendered = {};
 		this.emitter = emitter;
 		this.patchwerk = Patchwerk(emitter);
 	}
@@ -59,6 +58,8 @@ class Aggregator {
 		return this.loadSessions();
 	}
 
+
+	//@TODO: move it to office model object
 	addr(section) {
 		return this.section(section)
 			.addr();
@@ -69,6 +70,16 @@ class Aggregator {
 			.active();
 	}
 
+	ticket(section, idx) {
+		return this.section(section)
+			.ticket(idx);
+	}
+
+	session(section, code) {
+		return this.section(section)
+			.session(code);
+	}
+
 	order(params = {}) {
 		let l = this.data.length;
 		while (l--) {
@@ -77,35 +88,30 @@ class Aggregator {
 		return this;
 	}
 
-	filter(params) {
-		return this.section(params.organization)
+	filter(section, params) {
+		return this.section(section)
 			.filter(params);
 	}
 
 	updateLeaf(section, leaf) {
 		this.section(section)
 			.updateLeaf(leaf);
-		this.section(section)
-			.order();
-	}
-
-	loadSessions() {
-		return Promise.map(this.data, (section) => section.load());
-	}
-
-	renderSection(section) {
-		return this.section(section)
-			.render();
 	}
 
 	render(sections) {
 		let sect = sections || Object.keys(this.keymap);
 		let l = sect.length;
 		while (l--) {
-			this.rendered[sect[l]] = this.renderSection(sect[l]);
+			this.section(sect[l])
+				.render();
 		}
-		return this.rendered;
+		return this;
 	}
+
+	loadSessions() {
+		return Promise.map(this.data, (section) => section.load());
+	}
+
 
 	createSession(data) {
 		return this.section(data.organization)
@@ -115,7 +121,6 @@ class Aggregator {
 	add(session) {
 		this.section(session.getSection())
 			.add(session);
-		return this.render();
 	}
 
 	saveSession(session) {

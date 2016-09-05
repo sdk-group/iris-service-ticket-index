@@ -16,7 +16,7 @@ class AggregatorSection {
 
 		this.filtering = null;
 		this.ordering = null;
-		this._invalid = false;
+		this._invalid = true;
 	}
 
 	updateKeydata(value) {
@@ -30,16 +30,28 @@ class AggregatorSection {
 	}
 
 	session(code) {
+		console.log("GETSESSION", code, this.keymap);
 		return this.data[this.keymap[code]];
+	}
+
+	ticket(idx) {
+		return this.rendered[idx];
 	}
 
 	updateLeaf(leaf) {
 		//@FIXIT: switch to ticket models
-		let tick = this.session(leaf.code)
-			.find(leaf.id);
-		console.log("UPDATE", leaf, tick);
+		let session = this.session(leaf.code);
+		let tick = session.find(leaf.id);
+		console.log("UPDATE", leaf, tick, session);
 		tick.getContainer()
 			.update(leaf);
+		this.render();
+		this.order();
+	}
+
+	next(curr_idx) {
+		let session = this.session(this.rendered[curr_idx].code);
+		return session.next();
 	}
 
 	active() {
@@ -60,7 +72,7 @@ class AggregatorSection {
 		params.date = this.moment.format('YYYY-MM-DD');
 		params.now = this.moment.diff(this.moment.clone()
 			.startOf('day'), 'seconds');
-		this.ordering.run(params);
+		this.ordering.run(params, false, this.getRendered());
 		return this;
 	}
 
@@ -69,15 +81,12 @@ class AggregatorSection {
 		params.now = this.moment.diff(this.moment.clone()
 			.startOf('day'), 'seconds');
 		params.state = params.state || '*';
-		return this.filtering.run(params, this.ordering.out());
+		return this.filtering.run(params, this.ordering.out(), this.getRendered());
 	}
 
 	setIndexers(filter, order) {
 		this.filtering = filter;
-		this.filtering.setSource(this);
-
 		this.ordering = order;
-		this.ordering.setSource(this);
 	}
 
 	render() {
@@ -87,6 +96,8 @@ class AggregatorSection {
 		while (l--) {
 			this.rendered = this.rendered.concat(this.data[l].render());
 		}
+		console.log("RENDER");
+		this.validate();
 		return this.rendered;
 	}
 
@@ -95,12 +106,12 @@ class AggregatorSection {
 		//if(expired) return this.render()
 		if (this.invalid()) {
 			this.render();
-			this.order();
 		}
 		return this.rendered;
 	}
 
 	invalidate() {
+		console.log("INVALIDATE");
 		this._invalid = true;
 	}
 
@@ -109,6 +120,7 @@ class AggregatorSection {
 	}
 
 	validate() {
+		console.log("VALIDATE");
 		this._invalid = false;
 	}
 
@@ -122,6 +134,8 @@ class AggregatorSection {
 		} else {
 			this.data[this.keymap[id]] = session;
 		}
+		console.log("ADD", session.code());
+		this.invalidate();
 	}
 
 	load() {
@@ -136,6 +150,7 @@ class AggregatorSection {
 				counter: '*'
 			})])
 			.then(res => {
+				// console.log(res);
 				let sessions = res[0],
 					l = sessions.length,
 					session_data;

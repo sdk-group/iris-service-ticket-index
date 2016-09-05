@@ -10,15 +10,11 @@ class Indexer {
 		this._chainsz = this._middleware.length;
 	}
 
-	setSource(src) {
-		this.source = src;
-	}
-
-
-	run(params, initial_idx) {
-		let source = this.source.getRendered();
+	run(params, initial_idx, data) {
+		let source = data;
 		let res = initial_idx || Object.keys(source),
 			l = this._chainsz;
+		// console.log("INDEXER STARTIDX", res);
 		while (l--) {
 			res = this._middleware[this._chainsz - l - 1](res, source, params);
 		}

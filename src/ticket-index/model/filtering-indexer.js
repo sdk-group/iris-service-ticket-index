@@ -7,8 +7,8 @@ class FilteringIndexer extends Indexer {
 		super('filter', filters);
 	}
 
-	run(params, initial_idx) {
-		let res = super.run(params, initial_idx.slice());
+	run(params, initial_idx, data) {
+		let res = super.run(params, initial_idx.slice(), data);
 		let i, l = res.length,
 			compacted = [];
 		for (i = 0; i < l; i++) {

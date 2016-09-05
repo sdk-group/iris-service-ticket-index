@@ -6,9 +6,11 @@ class IndexDispenser {
 	}
 
 	// methods
-	dispense(section, size, prefiltered) {
+	dispense(section, size, filter) {
 		let source = this.aggregator.section(section)
 			.getRendered();
+		let prefiltered = this.aggregator.filter(section, filter);
+
 		let idx = prefiltered || Object.keys(source),
 			l = idx.length,
 			i, src;
@@ -54,9 +56,15 @@ class IndexDispenser {
 
 	}
 
-	findIndex(section, code, prefiltered) {
+	findIndex(section, code, filter) {
 		let source = this.aggregator.section(section)
 			.getRendered();
+
+		this.aggregator.section(section)
+			.order();
+		// console.log("FINDINDEX");
+		let prefiltered = this.aggregator.filter(section, filter);
+
 		let idx = prefiltered || Object.keys(source),
 			l = idx.length,
 			res = -1,
@@ -66,6 +74,7 @@ class IndexDispenser {
 			src = source[idx[i]];
 			if (src.properties.state == 'postponed')
 				pc++;
+			// console.log(src.properties.code, code);
 			if (src.properties.code == code)
 				res = i;
 		}
