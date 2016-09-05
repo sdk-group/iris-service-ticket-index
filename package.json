@@ -54,6 +54,6 @@
 		"gulp-minify": "0.0.14",
 		"gulp-uglify": "^2.0.0",
 		"lodash": "^4.15.0",
-		"patchwerk": "git+https://github.com/sdk-group/patchwerk.git"
+		"patchwerk": "git+https://github.com/sdk-group/patchwerk.git#experimental"
 	}
 }
