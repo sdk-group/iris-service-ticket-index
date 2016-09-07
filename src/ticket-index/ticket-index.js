@@ -19,10 +19,10 @@ class TicketIndex {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			return this.actionActiveHead(data)
 				.then((res) => {
-					console.log("STRUCT I", require('util')
-						.inspect(res, {
-							depth: null
-						}));
+					// console.log("STRUCT I", require('util')
+					// 	.inspect(res, {
+					// 		depth: null
+					// 	}));
 					_.map(res, (ws_head, ws_id) => {
 						_.map(ws_head, (head, user_id) => {
 							let to_join = ['queue.head', this.index.addr(data.organization), ws_id];
@@ -81,7 +81,7 @@ class TicketIndex {
 		workstation,
 		last = []
 	}) {
-		console.log("UPD", last);
+		// console.log("UPD", last);
 		let upd = (last.constructor === Array) ? last : [last];
 		_.map(upd, entity => {
 			this.index.updateLeaf(organization, entity);
@@ -226,13 +226,10 @@ class TicketIndex {
 		};
 
 		if (current.length > 0) {
-			console.log("ACTIVE", current);
 			curr_tick = this.index.ticket(organization, current[0]);
 			response.current = curr_tick;
-			console.log("CURR TICK", _.functionsIn(curr_tick));
-			curr_session = this.index.session(organization, curr_tick.properties.code);
+			curr_session = this.index.session(organization, curr_tick.code());
 			response.next = curr_session.next();
-			console.log("ACTIVE SESSION", curr_session, response);
 		}
 		if (response.next)
 			return response;
@@ -252,7 +249,6 @@ class TicketIndex {
 					operator: operator,
 					state: ['registered']
 				});
-				console.log("ALL", all);
 				let idx = (all.length > 0) ? all[0] : null;
 				if (idx !== null)
 					response.next = this.index.ticket(organization, idx);

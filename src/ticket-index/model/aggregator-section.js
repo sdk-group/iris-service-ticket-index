@@ -30,7 +30,7 @@ class AggregatorSection {
 	}
 
 	session(code) {
-		console.log("GETSESSION", code, this.keymap);
+		// console.log("GETSESSION", code, this.keymap);
 		return this.data[this.keymap[code]];
 	}
 
@@ -42,7 +42,7 @@ class AggregatorSection {
 		//@FIXIT: switch to ticket models
 		let session = this.session(leaf.code);
 		let tick = session.find(leaf.id);
-		console.log("UPDATE", leaf, tick, session);
+		// console.log("UPDATE", leaf, tick, session);
 		tick.getContainer()
 			.update(leaf);
 		this.render();
@@ -111,7 +111,7 @@ class AggregatorSection {
 	}
 
 	invalidate() {
-		console.log("INVALIDATE");
+		console.log("INVALIDATE", this.constructor.name);
 		this._invalid = true;
 	}
 
@@ -124,9 +124,16 @@ class AggregatorSection {
 		this._invalid = false;
 	}
 
+	_invalidateCallback(self) {
+		console.log("INVALIDATE", self.constructor.name);
+		return function () {
+			self._invalid = false;
+		}
+	}
+
 	add(session) {
 		let id = session.code();
-		session.onUpdate(this.invalidate);
+		session.onUpdate(this._invalidateCallback(this));
 
 		if (this.keymap[id] === undefined) {
 			this.data.push(session);
