@@ -17,7 +17,9 @@ class TicketIndex {
 
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
-			return this.actionActiveHead(data)
+			console.log("preemit");
+			return this.index.loadIfOutdated(data.organization)
+				.then(res => this.actionActiveHead(data))
 				.then((res) => {
 					// console.log("STRUCT I", require('util')
 					// 	.inspect(res, {
@@ -157,7 +159,7 @@ class TicketIndex {
 		let srv = _.castArray(services);
 		return (_.isEmpty(srv) ? this.emitter.addTask('workstation', {
 					_action: 'workstation',
-					workstation
+					workstation: workstation
 				})
 				.then(res => res[workstation]) : Promise.resolve({
 					provides: srv
@@ -185,9 +187,9 @@ class TicketIndex {
 	}) {
 		return this.emitter.addTask('workstation', {
 				_action: 'active-workstations',
-				organization,
+				organization: organization,
+				state: ['active', 'paused'],
 				device_type: 'control-panel'
-
 			})
 			.then((res) => res['control-panel']);
 	}
@@ -254,6 +256,22 @@ class TicketIndex {
 					response.next = this.index.ticket(organization, idx);
 				return response;
 			});
+	}
+
+	createTicket(source) {
+		let fnames = ['service', 'operator', 'destination', 'dedicated_date', 'service_count', 'priority', 'workstation', 'user_id', 'user_type', '_action', 'request_id'];
+		let {
+			service,
+			operator,
+			destination,
+			dedicated_date,
+			service_count,
+			priority
+		} = _.pick(data, fnames);
+		let s_count = _.parseInt(service_count) || 1;
+		let user_info = _.omit(data, fnames);
+
+
 	}
 
 }

@@ -108,6 +108,11 @@ class Aggregator {
 		return this;
 	}
 
+	loadIfOutdated(section) {
+		return this.section(section)
+			.loadIfOutdated();
+	}
+
 	loadSessions() {
 		return Promise.map(this.data, (section) => section.load());
 	}

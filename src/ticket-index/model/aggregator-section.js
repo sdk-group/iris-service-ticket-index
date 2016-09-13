@@ -7,7 +7,6 @@ class AggregatorSection {
 	constructor(patchwerk, name, keydata = {}) {
 		this.name = name;
 		this.keydata = keydata;
-		this.moment = moment.tz(this.keydata.org_timezone);
 		this.patchwerk = patchwerk;
 
 		this.keymap = {};
@@ -21,7 +20,6 @@ class AggregatorSection {
 
 	updateKeydata(value) {
 		this.keydata = value;
-		this.moment = moment.tz(this.keydata.org_timezone);
 		return this;
 	}
 
@@ -29,6 +27,11 @@ class AggregatorSection {
 		return this.keydata.emit_path;
 	}
 
+	moment() {
+		return moment.tz(this.keydata.org_timezone);
+	}
+
+	//search
 	session(code) {
 		// console.log("GETSESSION", code, this.keymap);
 		return this.data[this.keymap[code]];
@@ -38,6 +41,7 @@ class AggregatorSection {
 		return this.rendered[idx];
 	}
 
+	//update
 	updateLeaf(leaf) {
 		//@FIXIT: switch to ticket models
 		let session = this.session(leaf.code);
@@ -54,31 +58,20 @@ class AggregatorSection {
 		return session.next();
 	}
 
-	active() {
-		let l = this.data.length,
-			res = [],
-			curr;
-
-		while (l--) {
-			curr = this.data[l].current();
-			if (curr) {
-				res.push(curr);
-			}
-		}
-		return res;
-	}
 
 	order(params = {}) {
-		params.date = this.moment.format('YYYY-MM-DD');
-		params.now = this.moment.diff(this.moment.clone()
+		let curr_moment = this.moment();
+		params.date = curr_moment.format('YYYY-MM-DD');
+		params.now = curr_moment.diff(curr_moment.clone()
 			.startOf('day'), 'seconds');
 		this.ordering.run(params, false, this.getRendered());
 		return this;
 	}
 
 	filter(params = {}) {
+		let curr_moment = this.moment();
 		params.prebook_show_interval = this.keydata.prebook_show_interval;
-		params.now = this.moment.diff(this.moment.clone()
+		params.now = curr_moment.diff(curr_moment.clone()
 			.startOf('day'), 'seconds');
 		params.state = params.state || '*';
 		return this.filtering.run(params, this.ordering.out(), this.getRendered());
@@ -124,16 +117,19 @@ class AggregatorSection {
 		this._invalid = false;
 	}
 
-	_invalidateCallback(self) {
-		console.log("INVALIDATE", self.constructor.name);
-		return function () {
-			self._invalid = false;
-		}
+	flush() {
+		this.data = [];
+		//mb destruct all sessions? they have circular dependencies
 	}
 
 	add(session) {
+		//only today
+		if (this.moment()
+			.format('YYYY-MM-DD') !== session.dedication())
+			return this;
+
 		let id = session.code();
-		session.onUpdate(this._invalidateCallback(this));
+		session.onUpdate(this.invalidate.bind(this));
 
 		if (this.keymap[id] === undefined) {
 			this.data.push(session);
@@ -143,10 +139,24 @@ class AggregatorSection {
 		}
 		console.log("ADD", session.code());
 		this.invalidate();
+		return this;
+	}
+
+	loadIfOutdated() {
+		//it is logical because only today sessions can be added
+		if (this.data.length > 0 && this.data[0].dedication() < this.moment()
+			.format('YYYY-MM-DD')) {
+			console.log("OUTDATED");
+			this.flush();
+			return this.load();
+		} else {
+			return Promise.resolve(true);
+		}
 	}
 
 	load() {
-		let date = this.moment.format('YYYY-MM-DD');
+		let date = this.moment()
+			.format('YYYY-MM-DD');
 		return Promise.all([this.patchwerk.get('TicketSession', {
 				department: this.name,
 				date: date,
@@ -177,7 +187,8 @@ class AggregatorSection {
 
 	saveSession(session) {
 		let model = session.extract();
-		let date = this.moment.format('YYYY-MM-DD');
+		let date = this.moment()
+			.format('YYYY-MM-DD');
 		return this.patchwerk.save(model, {
 				department: this.name,
 				date: date

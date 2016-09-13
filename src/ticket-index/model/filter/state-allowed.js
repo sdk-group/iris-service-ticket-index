@@ -1,6 +1,7 @@
 'use strict';
 
 module.exports = function (prefiltered, source, params) {
+	console.log("state", prefiltered);
 	let l = prefiltered.length,
 		i = 0,
 		src;

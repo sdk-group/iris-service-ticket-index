@@ -10,7 +10,7 @@ class IndexDispenser {
 		let source = this.aggregator.section(section)
 			.getRendered();
 		let prefiltered = this.aggregator.filter(section, filter);
-
+		// console.log(source);
 		let idx = prefiltered || Object.keys(source),
 			l = idx.length,
 			i, src;

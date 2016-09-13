@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = function (prefiltered, source, params) {
-
+	console.log("srv-allowed", prefiltered);
 	let l = prefiltered.length,
 		i = 0,
 		src;
