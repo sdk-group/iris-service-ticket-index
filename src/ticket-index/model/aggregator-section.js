@@ -32,9 +32,9 @@ class AggregatorSection {
 	}
 
 	//search
-	session(code) {
+	session(id) {
 		// console.log("GETSESSION", code, this.keymap);
-		return this.data[this.keymap[code]];
+		return this.data[this.keymap[id]];
 	}
 
 	ticket(idx) {
@@ -44,7 +44,7 @@ class AggregatorSection {
 	//update
 	updateLeaf(leaf) {
 		//@FIXIT: switch to ticket models
-		let session = this.session(leaf.code);
+		let session = this.session(leaf.session);
 		let tick = session.find(leaf.id);
 		// console.log("UPDATE", leaf, tick, session);
 		tick.getContainer()
@@ -128,7 +128,7 @@ class AggregatorSection {
 			.format('YYYY-MM-DD') !== session.dedication())
 			return this;
 
-		let id = session.code();
+		let id = session.identifier();
 		session.onUpdate(this.invalidate.bind(this));
 
 		if (this.keymap[id] === undefined) {
@@ -137,7 +137,6 @@ class AggregatorSection {
 		} else {
 			this.data[this.keymap[id]] = session;
 		}
-		console.log("ADD", session.code());
 		this.invalidate();
 		return this;
 	}
@@ -206,19 +205,58 @@ class AggregatorSection {
 
 
 	createSession(data) {
-		return Promise.all([this.patchwerk.create('TicketSession', data, {
+		let tmp_session;
+		return this.patchwerk.create('TicketSession', data, {
 				department: data.organization,
 				date: data.dedicated_date,
 				counter: "*"
-			}), this.patchwerk.get('Ticket', {
-				department: data.organization,
-				date: data.dedicated_date,
-				counter: _.map(data.uses, id => id.split('--')[1])
-			})])
-			.then((res) => {
-				return Session(res[0], res[1]);
+			})
+			.then((session) => {
+				tmp_session = session;
+				return Promise.map(data.uses, t_id =>
+					this.patchwerk.get('Ticket', {
+						key: t_id
+					}));
+			})
+			.then(t_data => {
+				return Session(tmp_session, t_data);
 			});
 
+	}
+
+	createTickets(data) {
+		let b_data = data.constructor === Array ? data : [data];
+
+		return Promise.map(b_data, t_data => {
+			t_data.booking_date = this.moment()
+				.format();
+			console.log("TDATA", t_data);
+			let service_data;
+			return this.patchwerk.get('Service', {
+					department: this.keydata.id,
+					counter: _.last(_.split(t_data.service, '-'))
+				})
+				.then(srv => {
+					service_data = srv;
+					return this.patchwerk.create('Ticket', t_data, {
+						department: t_data.org_destination,
+						date: t_data.dedicated_date,
+						counter: "*"
+					});
+				})
+				.then(tick => {
+					// console.log("a-s crticks", tick);
+					tick.lockField('operator')
+						.lockField('destination')
+						.modifyPriority('service', service_data.get('priority'))
+						.appendLabel(service_data.get('prefix'));
+					// console.log("a-s crticks II", tick);
+
+					if (tick.get('booking_method') == 'live')
+						tick.set('time_description', service_data.live_operation_time);
+					return tick;
+				});
+		})
 	}
 }
 

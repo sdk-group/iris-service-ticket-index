@@ -56,7 +56,7 @@ class IndexDispenser {
 
 	}
 
-	findIndex(section, code, filter) {
+	findIndex(section, id, filter) {
 		let source = this.aggregator.section(section)
 			.getRendered();
 
@@ -75,7 +75,7 @@ class IndexDispenser {
 			if (src.properties.state == 'postponed')
 				pc++;
 			// console.log(src.properties.code, code);
-			if (src.properties.code == code)
+			if (src.id == id)
 				res = i;
 		}
 		return res < 0 ? res : res + pc;

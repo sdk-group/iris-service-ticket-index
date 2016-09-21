@@ -123,14 +123,23 @@ class Aggregator {
 			.createSession(data);
 	}
 
+	createTickets(data) {
+		return this.section(data.organization)
+			.createSession(data);
+	}
+
 	add(session) {
-		this.section(session.getSection())
+		this.section(session.attachment())
 			.add(session);
 	}
 
 	saveSession(session) {
-		return this.section(session.getSection())
+		return this.section(session.attachment())
 			.saveSession(session);
+	}
+
+	saveTickets(tickets) {
+		return Promise.map(tickets, t => this.patchwerk.save(t));
 	}
 
 }

@@ -17,7 +17,6 @@ class TicketIndex {
 
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
-			console.log("preemit");
 			return this.index.loadIfOutdated(data.organization)
 				.then(res => this.actionActiveHead(data))
 				.then((res) => {
@@ -123,7 +122,7 @@ class TicketIndex {
 
 	actionHeadPosition({
 		organization,
-		code
+		id
 	}) {
 		let receivers;
 		return this.serviceProviders({
@@ -137,15 +136,17 @@ class TicketIndex {
 					.compact()
 					.value();
 
-				return _.mapValues(receivers, (receiver_data, receiver_id) => {
-					let filter = {
-						operator: receiver_data.occupied_by,
-						organization: organization,
-						service: receiver_data.provides || services,
-						destination: receiver_data.id
-					};
-					return this.dispenser.findIndex(organization, code, filter);
-				});
+				return _(receivers)
+					.map((receiver_data, receiver_id) => {
+						let filter = {
+							operator: receiver_data.occupied_by,
+							organization: organization,
+							service: receiver_data.provides || services,
+							destination: receiver_data.id
+						};
+						return this.dispenser.findIndex(organization, id, filter);
+					})
+					.max();
 			});
 	}
 
@@ -175,10 +176,56 @@ class TicketIndex {
 			});
 	}
 
-	actionCreateSession(data) {
-		return this.index.createSession(data)
-			.then(session => this.index.saveSession(session))
-			.then(session => this.index.add(session));
+	actionConfirmSession({
+		source: data,
+		org_data: org_data,
+		service_data: service_data,
+		confirm: confirm
+	}) {
+		let s_data = {
+			dedicated_date: data.dedicated_date,
+			organization: org_data.id,
+			user_info: data.user_info
+		};
+		return this.createTickets(data, org_data, service_data)
+			.then(ticks => {
+				let ts = _.map(ticks, t => t.getSource());
+
+				//@FIXIT code must be crafted here, not in tickets
+				s_data.code = ts[0].code;
+				return confirm(ts);
+			})
+			.then(confirmed => {
+				if (confirmed.success) {
+					let keys = confirmed.keys;
+					let type = keys.length == 1 ? 'idle' : 'picker';
+					let data = keys.length == 1 ? keys : _.map(keys, k => ({
+						type: 'idle',
+						data: k
+					}));
+					s_data.description = {
+						data: data,
+						type: type
+					};
+					s_data.uses = keys;
+
+					return this.index.createSession(s_data)
+						.then(session => this.index.saveSession(session))
+						.then(session => {
+							confirmed.response = _(session.render())
+								.castArray()
+								.map(t => t.set("session", session.identifier()))
+								.value();
+							this.index.add(session);
+							return this.index.saveTickets(confirmed.response);
+						})
+						.then(res => {
+							confirmed.response = _.map(confirmed.response, t => t.serialize());
+							return confirmed;
+						});
+				}
+				return confirmed;
+			});
 	}
 
 
@@ -229,9 +276,11 @@ class TicketIndex {
 
 		if (current.length > 0) {
 			curr_tick = this.index.ticket(organization, current[0]);
-			response.current = curr_tick;
-			curr_session = this.index.session(organization, curr_tick.code());
-			response.next = curr_session.next();
+			response.current = curr_tick.serialize();
+			curr_session = this.index.session(organization, curr_tick.get("session"));
+			let next = curr_session.next();
+			if (next)
+				response.next = next.serialize();
 		}
 		if (response.next)
 			return response;
@@ -253,25 +302,82 @@ class TicketIndex {
 				});
 				let idx = (all.length > 0) ? all[0] : null;
 				if (idx !== null)
-					response.next = this.index.ticket(organization, idx);
+					response.next = this.index.ticket(organization, idx)
+					.serialize();
 				return response;
 			});
 	}
 
-	createTicket(source) {
-		let fnames = ['service', 'operator', 'destination', 'dedicated_date', 'service_count', 'priority', 'workstation', 'user_id', 'user_type', '_action', 'request_id'];
-		let {
-			service,
-			operator,
-			destination,
-			dedicated_date,
-			service_count,
-			priority
-		} = _.pick(data, fnames);
-		let s_count = _.parseInt(service_count) || 1;
-		let user_info = _.omit(data, fnames);
+	createTickets(source, org_data, service_data) {
+		let services = !source.service ? [] : (source.service.constructor === Array ? source.service : [source.service])
+		let service_count = !source.service_count ? [] : (source.service_count.constructor === Array ? source.service_count : [source.service_count])
 
+		return this.emitter.addTask('ticket', {
+				_action: 'basic-priorities'
+			})
+			.then(priority => {
+				let computed_priority = this._computePriority(priority, org_data.priority_description, source.priority);
 
+				let build_data = _.map(services, (srv_id, i) => {
+					return {
+						label: this._composePrefix(computed_priority),
+						priority: computed_priority,
+
+						service: srv_id,
+						service_count: _.parseInt(service_count[i]) || 1,
+
+						operator: source.operator,
+						destination: source.destination,
+						org_destination: org_data.id,
+
+						dedicated_date: source.dedicated_date,
+						booking_method: source.booking_method,
+						history: source.history,
+
+						state: source.state,
+						called: 0,
+						expiry: source.expiry || 0,
+						user_info: source.user_info
+					};
+				});
+				//@FIXIT do it through the main aggregator
+				return this.index.section(org_data.id)
+					.createTickets(build_data);
+			})
+			.then(tickets => Promise.map(tickets,
+				ticket => Promise.props({
+					label: this.emitter.addTask('code-registry', {
+						_action: 'make-label',
+						prefix: ticket.get('label')
+							.length && ticket.get('label'),
+						office: ticket.get('org_destination'),
+						date: ticket.get('dedicated_date')
+					}),
+					code: source.code || this.emitter.addTask('code-registry', {
+						_action: 'make-pin',
+						prefix: org_data.pin_code_prefix
+					})
+				})
+				.then(codes => {
+					ticket.set('code', codes.code);
+					ticket.set('label', codes.label);
+					return ticket;
+				})));
+	}
+
+	_computePriority(basic_description, org_override = {}, manual_override = {}) {
+		let prior_keys = _.keys(manual_override);
+		let basic = _.mapValues(_.pick(basic_description, prior_keys), v => v.params);
+		let local = _.pick(org_override, prior_keys);
+		return _.merge(basic, local, manual_override);
+	}
+
+	_composePrefix(priority_description) {
+		return _(priority_description)
+			.map('prefix')
+			.sortBy()
+			.sortedUniq()
+			.join('');
 	}
 
 }

@@ -3,14 +3,14 @@
 module.exports = function (prefiltered, source, params) {
 	console.log("srv-allowed", prefiltered);
 	let l = prefiltered.length,
-		i = 0,
+		i = -1,
 		src;
 	while (l--) {
+		i++;
 		if (!prefiltered[i]) continue;
 		src = source[prefiltered[i]];
 		if (params.service !== '*' && !~params.service.indexOf(src.properties.service))
 			prefiltered[i] = false;
-		i++;
 	}
 	return prefiltered;
 };
