@@ -53,7 +53,7 @@
 		"gulp-babel": "^6.1.2",
 		"gulp-minify": "0.0.14",
 		"gulp-uglify": "^2.0.0",
-		"lodash": "^4.15.0",
+		"lodash": "^4.16.1",
 		"patchwerk": "git+https://github.com/sdk-group/patchwerk.git"
 	}
 }
