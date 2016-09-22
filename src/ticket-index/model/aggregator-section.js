@@ -249,7 +249,9 @@ class AggregatorSection {
 					tick.lockField('operator')
 						.lockField('destination')
 						.modifyPriority('service', service_data.get('priority'))
-						.appendLabel(service_data.get('prefix'));
+						.modifyLabel(service_data.get('prefix'));
+					if (tick.get("booking_method") == "prebook")
+						tick.modifyLabel(this.keydata.prebook_label_prefix, "prepend");
 					// console.log("a-s crticks II", tick);
 
 					if (tick.get('booking_method') == 'live')
