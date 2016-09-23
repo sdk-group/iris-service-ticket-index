@@ -1,8 +1,8 @@
 'use strict';
 
 module.exports = function (start, source, params) {
-	// console.log("____________PREBOOK_____________________>>>>>>>>>>>>>>>>>>>");
-	// console.log(source);
+	console.log("____________PREBOOK_____________________>>>>>>>>>>>>>>>>>>>");
+	console.log(source);
 	// console.log("START", start);
 	console.log('po', start);
 	let l = start.length,
@@ -12,7 +12,8 @@ module.exports = function (start, source, params) {
 		j = 0,
 		timemarks = Array(l),
 		prebook_idx = [],
-		prev = _.parseInt(params.now);
+		prev = _.parseInt(params.now),
+		insert_success = false;
 
 	while (l--) {
 		if (source[start[i]].properties.booking_method == 'live') {
@@ -30,6 +31,14 @@ module.exports = function (start, source, params) {
 
 	console.log("TIMEMARKS", timemarks, prebook_idx);
 	console.log("START", start);
+
+	function comparator(a, b) {
+		let atick = source[a],
+			btick = source[b];
+		return atick.time_description[0] - btick.time_description[0];
+	}
+	prebook_idx.sort(comparator);
+
 	while (l--) {
 		console.log("PBIDX", prebook_idx[l]);
 		while (len--) {
@@ -38,9 +47,13 @@ module.exports = function (start, source, params) {
 
 			if (timemarks[j] >= source[prebook_idx[l]].properties.time_description[0]) {
 				start.splice(j, 0, prebook_idx[l]);
+				insert_success = true;
 				break;
 			}
 		}
+		if (!insert_success)
+			start.push(prebook_idx[l]);
+		insert_success = false;
 		len = plen;
 	}
 	// console.log("START", start);

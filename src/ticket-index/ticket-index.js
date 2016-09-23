@@ -333,6 +333,7 @@ class TicketIndex {
 						dedicated_date: source.dedicated_date,
 						booking_method: source.booking_method,
 						history: source.history,
+						time_description: source.time_description,
 
 						state: source.state,
 						called: 0,
