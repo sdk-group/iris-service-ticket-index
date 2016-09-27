@@ -14,7 +14,7 @@ class Indexer {
 		let source = data;
 		let res = initial_idx || Object.keys(source),
 			l = this._chainsz;
-		console.log("INDEXER STARTIDX", res);
+		console.log("INDEXER STARTIDX", res, params);
 		while (l--) {
 			res = this._middleware[this._chainsz - l - 1](res, source, params);
 			console.log(res);

@@ -82,7 +82,7 @@ class TicketIndex {
 		workstation,
 		last = []
 	}) {
-		// console.log("UPD", last);
+		console.log("UPD", last);
 		let upd = (last.constructor === Array) ? last : [last];
 		_.map(upd, entity => {
 			this.index.updateLeaf(organization, entity);

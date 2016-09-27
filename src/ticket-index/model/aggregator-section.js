@@ -118,7 +118,10 @@ class AggregatorSection {
 	}
 
 	flush() {
+		this.keymap = {};
 		this.data = [];
+		this.rendered = [];
+		this.invalid();
 		//mb destruct all sessions? they have circular dependencies
 	}
 
@@ -147,14 +150,16 @@ class AggregatorSection {
 			.format('YYYY-MM-DD')) {
 			console.log("OUTDATED");
 			this.flush();
-			return this.load();
+			return this.load()
+				.then(res => this.render())
+				.then(res => this.order());
 		} else {
 			return Promise.resolve(true);
 		}
 	}
 
-	load() {
-		let date = this.moment()
+	load(spec_date) {
+		let date = spec_date || this.moment()
 			.format('YYYY-MM-DD');
 		return Promise.all([this.patchwerk.get('TicketSession', {
 				department: this.name,
