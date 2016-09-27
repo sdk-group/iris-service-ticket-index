@@ -72,8 +72,8 @@ class IndexDispenser {
 			src;
 		for (i = 0; i < l; i++) {
 			src = source[idx[i]];
-			if (src.properties.state == 'postponed')
-				pc++;
+			// if (src.properties.state == 'postponed')
+			// 	pc++;
 			// console.log(src.properties.code, code);
 			if (src.id == id)
 				res = i;
