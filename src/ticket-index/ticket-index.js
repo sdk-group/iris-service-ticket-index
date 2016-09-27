@@ -142,7 +142,8 @@ class TicketIndex {
 							operator: receiver_data.occupied_by,
 							organization: organization,
 							service: receiver_data.provides || services,
-							destination: receiver_data.id
+							destination: receiver_data.id,
+							state: ['postponed', 'registered', 'called', 'processing']
 						};
 						return this.dispenser.findIndex(organization, id, filter);
 					})

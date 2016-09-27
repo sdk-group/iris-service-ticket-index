@@ -32,8 +32,8 @@ module.exports = function (start, source, params) {
 	l = prebook_idx.length;
 	start.splice(-l, l);
 
-	console.log("TIMEMARKS", timemarks, prebook_idx);
-	console.log("START", start);
+	// console.log("TIMEMARKS", timemarks, prebook_idx);
+	// console.log("START", start);
 
 	function comparator(a, b) {
 		let atick = source[a],
@@ -43,10 +43,10 @@ module.exports = function (start, source, params) {
 	prebook_idx.sort(comparator);
 
 	while (l--) {
-		console.log("PBIDX", prebook_idx[l]);
+		// console.log("PBIDX", prebook_idx[l]);
 		while (len--) {
 			j = plen - len - 1;
-			console.log(j, timemarks[j], source[prebook_idx[l]].properties.time_description[0]);
+			// console.log(j, timemarks[j], source[prebook_idx[l]].properties.time_description[0]);
 
 			if (timemarks[j] >= source[prebook_idx[l]].properties.time_description[0]) {
 				start.splice(j, 0, prebook_idx[l]);

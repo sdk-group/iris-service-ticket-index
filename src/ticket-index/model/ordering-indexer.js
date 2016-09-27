@@ -18,7 +18,7 @@ class OrderingIndexer extends Indexer {
 
 	run(params, initial_idx, data) {
 		this.result = super.run(params, initial_idx, data);
-		console.log("ORDERING INDEXER", initial_idx, this.result);
+		// console.log("ORDERING INDEXER", initial_idx, this.result);
 		return this;
 	}
 }
