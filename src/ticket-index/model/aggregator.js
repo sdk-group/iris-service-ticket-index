@@ -75,9 +75,9 @@ class Aggregator {
 			.ticket(idx);
 	}
 
-	session(section, code) {
+	session(section, id) {
 		return this.section(section)
-			.session(code);
+			.session(id);
 	}
 
 	order(params = {}) {

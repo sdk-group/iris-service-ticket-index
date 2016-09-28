@@ -54,7 +54,7 @@ class AggregatorSection {
 	}
 
 	next(curr_idx) {
-		let session = this.session(this.rendered[curr_idx].code);
+		let session = this.session(this.rendered[curr_idx].get('session'));
 		return session.next();
 	}
 
