@@ -229,13 +229,46 @@ class AggregatorSection {
 
 	}
 
+	virtualizeTicket(t_data) {
+		let service_data;
+		return this.patchwerk.get('Service', {
+				department: this.keydata.id,
+				counter: _.last(_.split(t_data.service, '-'))
+			})
+			.then(srv => {
+				service_data = srv;
+				return this.patchwerk.create('Ticket', t_data, {
+					department: t_data.org_destination,
+					date: t_data.dedicated_date,
+					counter: "*"
+				});
+			})
+			.then(tick => {
+				// console.log("a-s crvirticks", tick);
+				tick.unlockField('operator')
+					.unlockField('destination')
+					.modifyPriority('service', service_data.get('priority'));
+
+				tick.set("operator", null);
+				tick.set("destination", null);
+
+				if (tick.get('booking_method') == 'live') {
+					tick.set('time_description', service_data.live_operation_time);
+				} else {
+					let td = tick.time_description;
+					tick.set("time_description", [td[0], td[0] + service_data.prebook_operation_time])
+				}
+				return tick;
+			});
+	}
+
 	createTickets(data) {
 		let b_data = data.constructor === Array ? data : [data];
 
 		return Promise.map(b_data, t_data => {
 			t_data.booking_date = this.moment()
 				.format();
-			console.log("TDATA", t_data);
+			// console.log("TDATA", t_data);
 			let service_data;
 			return this.patchwerk.get('Service', {
 					department: this.keydata.id,

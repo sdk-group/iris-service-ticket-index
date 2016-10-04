@@ -17,6 +17,7 @@ class TicketIndex {
 
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
+			logger.info('queue.emit.head', data);
 			return this.index.loadIfOutdated(data.organization)
 				.then(res => this.actionActiveHead(data))
 				.then((res) => {
@@ -180,7 +181,6 @@ class TicketIndex {
 	actionConfirmSession({
 		source: data,
 		org_data: org_data,
-		service_data: service_data,
 		confirm: confirm
 	}) {
 		let s_data = {
@@ -188,7 +188,7 @@ class TicketIndex {
 			organization: org_data.id,
 			user_info: data.user_info
 		};
-		return this.createTickets(data, org_data, service_data)
+		return this.createTickets(data, org_data)
 			.then(ticks => {
 				let ts = _.map(ticks, t => t.getSource());
 
@@ -309,7 +309,74 @@ class TicketIndex {
 			});
 	}
 
-	createTickets(source, org_data, service_data) {
+	actionVirtualRoute({
+		ticket: tick_data,
+		service: service
+	}) {
+		let build_data = tick_data;
+		build_data.service = service;
+		build_data.state = "registered";
+		build_data.id = null;
+		let tick;
+		return this.index.section(build_data.org_destination)
+			.virtualizeTicket(build_data)
+			.then(ticket => {
+				console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ticket);
+				return this.index.saveTickets(ticket)
+			})
+			.then((tickets) => {
+				tick = tickets[0];
+				let session = this.index.session(tick.get("org_destination"), tick.get("session"));
+				session.virtualRoute(tick);
+				return this.index.saveSession(session);
+			})
+			.then(res => tick.serialize());
+	}
+
+	actionSplittedRoute({
+		ticket: tick_data,
+		destination: destination
+	}) {
+		let session;
+		let build_data = tick_data;
+		let filter_fn;
+		return this.emitter.addTask('workstation', {
+				_action: 'workstation',
+				workstation: destination
+			})
+			.then((res) => {
+				let services = _(res)
+					.flatMap('provides')
+					.uniq()
+					.compact()
+					.value();
+
+				filter_fn = function (entity) {
+					return !!~services.indexOf(entity.get("service"));
+				}
+				session = this.index.session(build_data.org_destination, build_data.session);
+				session.splittedRoute(filter_fn);
+				return this.index.saveSession(session);
+			})
+			.then(res => {
+				let tick = session.find(build_data.id);
+				tick.update(build_data);
+				let tickets = _.filter(session.tickets(), filter_fn),
+					len = tickets.length;
+				let dst = !_.isEmpty(destination) && destination || undefined;
+				while (len--) {
+					tickets[len].unlockField("destination");
+					tickets[len].set("destination", dst);
+					tickets[len].lockField("destination");
+				}
+
+				return this.index.saveTickets(tickets);
+			})
+			.then(res_tick => res_tick[0] && res_tick[0].serialize());
+	}
+
+
+	createTickets(source, org_data) {
 		let services = !source.service ? [] : (source.service.constructor === Array ? source.service : [source.service])
 		let service_count = !source.service_count ? [] : (source.service_count.constructor === Array ? source.service_count : [source.service_count])
 
