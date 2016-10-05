@@ -13,11 +13,15 @@ module.exports = function (start, source, params) {
 			return 1;
 		if (btick.properties.booking_method == 'prebook')
 			return -1;
+		let atime = moment(atick.properties.booking_date)
+			.unix();
+		let btime = moment(btick.properties.booking_date)
+			.unix();
+		let alabel = parseInt(atick.label.slice(_.lastIndexOf(atick.label, '-') + 1));
+		let blabel = parseInt(btick.label.slice(_.lastIndexOf(btick.label, '-') + 1));
 		if (atick.priority_value > btick.priority_value ||
-			atick.priority_value == btick.priority_value &&
-			moment(atick.properties.booking_date)
-			.unix() < moment(btick.properties.booking_date)
-			.unix())
+			atick.priority_value == btick.priority_value && atime < btime ||
+			atick.priority_value == btick.priority_value && atime == btime && alabel < blabel)
 			return -1;
 		else
 			return 1;
