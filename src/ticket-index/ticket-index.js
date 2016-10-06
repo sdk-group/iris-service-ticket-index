@@ -313,17 +313,32 @@ class TicketIndex {
 		ticket: tick_data,
 		service: service
 	}) {
+		let anchestor = tick_data.id,
+			generation = (tick_data.inheritance_level || 0) + 1;
 		let build_data = tick_data;
 		build_data.service = service;
+		build_data.inherits = anchestor;
+		build_data.inheritance_level = generation;
 		build_data.state = "registered";
 		build_data.id = null;
 		let tick;
-		return this.index.section(build_data.org_destination)
-			.virtualizeTicket(build_data)
-			.then(ticket => {
-				console.log("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ticket);
-				return this.index.saveTickets(ticket)
+		return this.emitter.addTask('history', {
+				_action: 'make-entry',
+				subject: {
+					type: 'system'
+				},
+				event_name: 'register',
+				context: {
+					inherits: anchestor,
+					inheritance_level: generation
+				}
 			})
+			.then((hst) => {
+				build_data.history = [hst];
+				return this.index.section(build_data.org_destination)
+					.virtualizeTicket(build_data);
+			})
+			.then(ticket => this.index.saveTickets(ticket))
 			.then((tickets) => {
 				tick = tickets[0];
 				let session = this.index.session(tick.get("org_destination"), tick.get("session"));

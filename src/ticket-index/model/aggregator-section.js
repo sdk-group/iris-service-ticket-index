@@ -248,6 +248,12 @@ class AggregatorSection {
 				tick.unlockField('operator')
 					.unlockField('destination')
 					.modifyPriority('service', service_data.get('priority'));
+				let hst = tick.get("history");
+				_.map(hst, h_entry => {
+					h_entry.local_time = this.moment()
+						.format();
+				});
+				tick.set("history", hst);
 
 				tick.set("operator", null);
 				tick.set("destination", null);
