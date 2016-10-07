@@ -313,15 +313,22 @@ class TicketIndex {
 		ticket: tick_data,
 		service: service
 	}) {
-		let anchestor = tick_data.id,
-			generation = (tick_data.inheritance_level || 0) + 1;
+		let anchestor = tick_data.inherits || tick_data.id;
 		let build_data = tick_data;
+		let session = this.index.session(tick_data.org_destination, tick_data.session);
+		let tick;
+		let anchestor_tick = session.find(anchestor);
+		let generation = (anchestor_tick.get("inheritance_counter") || 0) + 1;
+
+		anchestor_tick.update(tick_data);
+		anchestor_tick.set("inheritance_counter", generation);
+
 		build_data.service = service;
 		build_data.inherits = anchestor;
 		build_data.inheritance_level = generation;
 		build_data.state = "registered";
 		build_data.id = null;
-		let tick;
+
 		return this.emitter.addTask('history', {
 				_action: 'make-entry',
 				subject: {
@@ -338,10 +345,9 @@ class TicketIndex {
 				return this.index.section(build_data.org_destination)
 					.virtualizeTicket(build_data);
 			})
-			.then(ticket => this.index.saveTickets(ticket))
+			.then(ticket => this.index.saveTickets([ticket, anchestor_tick]))
 			.then((tickets) => {
 				tick = tickets[0];
-				let session = this.index.session(tick.get("org_destination"), tick.get("session"));
 				session.virtualRoute(tick);
 				return this.index.saveSession(session);
 			})
@@ -388,6 +394,25 @@ class TicketIndex {
 				return this.index.saveTickets(tickets);
 			})
 			.then(res_tick => res_tick[0] && res_tick[0].serialize());
+	}
+
+	actionClearedRoute({
+		ticket: tick_data
+	}) {
+		let session = this.index.session(tick_data.org_destination, tick_data.session);
+		let tickets = session.tickets(),
+			l = tickets.length,
+			tick;
+		while (l--) {
+			tick = tickets[l];
+			tick.unlockField("operator")
+				.unlockField("destination");
+			tick.set("operator", null);
+			tick.set("destination", null);
+			if (tick.id == tick_data.id)
+				tick.update(tick_data);
+		}
+		return this.index.saveTickets(tickets);
 	}
 
 

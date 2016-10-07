@@ -254,7 +254,9 @@ class AggregatorSection {
 						.format();
 				});
 				tick.set("history", hst);
-
+				tick.set("called", 0);
+				tick.set("inheritance_counter", 0);
+				tick.set("source", null);
 				tick.set("operator", null);
 				tick.set("destination", null);
 
