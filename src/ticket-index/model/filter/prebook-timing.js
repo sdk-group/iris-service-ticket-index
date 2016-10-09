@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = function (prefiltered, source, params) {
-	console.log("pb-timing", prefiltered);
+	// console.log("pb-timing", prefiltered);
 	let l = prefiltered.length,
 		i = -1,
 		src;

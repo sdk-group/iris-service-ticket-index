@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = function (start, source, params) {
-	console.log('of', start);
+	// console.log('of', start);
 
 	function comparator(a, b) {
 		let atick = source[a],

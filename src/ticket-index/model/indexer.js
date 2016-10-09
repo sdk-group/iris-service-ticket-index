@@ -17,7 +17,7 @@ class Indexer {
 		// console.log("INDEXER STARTIDX", res, params);
 		while (l--) {
 			res = this._middleware[this._chainsz - l - 1](res, source, params);
-			console.log(res);
+			// console.log(res);
 		}
 		return res;
 	}

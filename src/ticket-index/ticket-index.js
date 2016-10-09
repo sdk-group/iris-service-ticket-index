@@ -274,17 +274,8 @@ class TicketIndex {
 			current: null,
 			next: null
 		};
+		console.log("CURRENT", current);
 
-		if (current.length > 0) {
-			curr_tick = this.index.ticket(organization, current[0]);
-			response.current = curr_tick.serialize();
-			curr_session = this.index.session(organization, curr_tick.get("session"));
-			let next = curr_session.next();
-			if (next)
-				response.next = next.serialize();
-		}
-		if (response.next)
-			return response;
 
 		return (_.isEmpty(srv) ? this.emitter.addTask('workstation', {
 					_action: 'workstation',
@@ -294,13 +285,29 @@ class TicketIndex {
 					provides: srv
 				}))
 			.then((op) => {
-				let all = this.index.filter(organization, {
+				let flt = {
 					organization: organization,
 					service: op.provides,
 					destination: workstation,
 					operator: operator,
 					state: ['registered']
-				});
+				};
+				if (current.length > 0) {
+					let sc = this.index.section(organization);
+					let criteria = sc.isAppliable.bind(sc, flt);
+					curr_tick = this.index.ticket(organization, current[0]);
+					response.current = curr_tick.serialize();
+					curr_session = this.index.session(organization, curr_tick.get("session"));
+					let next = curr_session.next(criteria);
+					console.log("NEXT BY SESSIOn", next);
+					if (next)
+						response.next = next.serialize();
+				}
+				if (response.next)
+					return response;
+
+
+				let all = this.index.filter(organization, flt);
 				let idx = (all.length > 0) ? all[0] : null;
 				if (idx !== null)
 					response.next = this.index.ticket(organization, idx)

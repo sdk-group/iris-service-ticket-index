@@ -3,7 +3,7 @@
 let hasIntersection = require("../util/has-intersection.js");
 
 module.exports = function (prefiltered, source, params) {
-	console.log("op-prov", prefiltered);
+	// console.log("op-prov", prefiltered);
 	let l = prefiltered.length,
 		i = -1,
 		src;

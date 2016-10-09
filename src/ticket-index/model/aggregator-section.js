@@ -77,6 +77,10 @@ class AggregatorSection {
 		return this.filtering.run(params, this.ordering.out(), this.getRendered());
 	}
 
+	isAppliable(params = {}, entity) {
+		return !!(this.filtering.run(params, ['0'], [entity]))[0];
+	}
+
 	setIndexers(filter, order) {
 		this.filtering = filter;
 		this.ordering = order;
