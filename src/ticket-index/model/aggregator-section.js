@@ -165,6 +165,7 @@ class AggregatorSection {
 	load(spec_date) {
 		let date = spec_date || this.moment()
 			.format('YYYY-MM-DD');
+		this.flush();
 		return Promise.all([this.patchwerk.get('TicketSession', {
 				department: this.name,
 				date: date,

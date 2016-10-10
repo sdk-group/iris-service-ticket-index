@@ -18,7 +18,8 @@ class TicketIndex {
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			logger.info('queue.emit.head', data);
-			return this.index.loadIfOutdated(data.organization)
+			return this.fillIfEmpty(data.organization)
+				.then(res => this.index.loadIfOutdated(data.organization))
 				.then(res => this.actionActiveHead(data))
 				.then((res) => {
 					// console.log("STRUCT I", require('util')
@@ -67,6 +68,14 @@ class TicketIndex {
 			.then(() => this.index.order());
 	}
 
+	fillIfEmpty(org) {
+		if (!!this.index.section(org))
+			return Promise.resolve(true);
+		else
+			return this.fill()
+				.then(() => true);
+	}
+
 
 	takeHead(
 		section,
@@ -83,7 +92,7 @@ class TicketIndex {
 		workstation,
 		last = []
 	}) {
-		console.log("UPD", last);
+		// console.log("UPD", last);
 		let upd = (last.constructor === Array) ? last : [last];
 		_.map(upd, entity => {
 			this.index.updateLeaf(organization, entity);
@@ -318,7 +327,8 @@ class TicketIndex {
 
 	actionVirtualRoute({
 		ticket: tick_data,
-		service: service
+		service: service,
+		prehistory = []
 	}) {
 		let anchestor = tick_data.inherits || tick_data.id;
 		let build_data = tick_data;
@@ -350,6 +360,8 @@ class TicketIndex {
 			})
 			.then((hst) => {
 				build_data.history = [hst];
+				build_data.history.concat(prehistory);
+
 				return this.index.section(build_data.org_destination)
 					.virtualizeTicket(build_data);
 			})
