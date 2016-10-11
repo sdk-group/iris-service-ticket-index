@@ -380,7 +380,9 @@ class TicketIndex {
 
 	actionSplittedRoute({
 		ticket: tick_data,
-		destination: destination
+		destination: destination,
+		operator: operator,
+		callback: callback
 	}) {
 		let session;
 		let build_data = tick_data;
@@ -410,18 +412,26 @@ class TicketIndex {
 					len = tickets.length;
 				let dst = !_.isEmpty(destination) && destination || undefined;
 				while (len--) {
-					tickets[len].unlockField("destination");
-					tickets[len].set("destination", dst);
-					tickets[len].lockField("destination");
+					if (dst) {
+						tickets[len].unlockField("destination");
+						tickets[len].set("destination", dst);
+						tickets[len].lockField("destination");
+					}
+					if (operator) {
+						tickets[len].unlockField("operator");
+						tickets[len].set("operator", operator);
+						tickets[len].lockField("operator");
+					}
 				}
-
+				callback && callback(tickets);
 				return this.index.saveTickets(tickets);
 			})
 			.then(res_tick => res_tick[0] && res_tick[0].serialize());
 	}
 
 	actionClearedRoute({
-		ticket: tick_data
+		ticket: tick_data,
+		callback: callback
 	}) {
 		let session = this.index.session(tick_data.org_destination, tick_data.session);
 		let tickets = session.tickets(),
@@ -436,7 +446,16 @@ class TicketIndex {
 			if (tick.id == tick_data.id)
 				tick.update(tick_data);
 		}
+		callback && callback(tickets);
 		return this.index.saveTickets(tickets);
+	}
+
+	actionRelatedTickets({
+		ticket: tick_data
+	}) {
+		let session = this.index.session(tick_data.org_destination, tick_data.session);
+		let tickets = session.tickets();
+		return _.map(tickets, t => t.serialize());
 	}
 
 
