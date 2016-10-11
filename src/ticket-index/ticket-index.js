@@ -321,6 +321,8 @@ class TicketIndex {
 				if (idx !== null)
 					response.next = this.index.ticket(organization, idx)
 					.serialize();
+				this.index.section(organization)
+					.invalidate();
 				return response;
 			});
 	}
