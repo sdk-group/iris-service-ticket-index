@@ -4,10 +4,10 @@ module.exports = function (start, source, params) {
 	// console.log("____________PREBOOK_____________________>>>>>>>>>>>>>>>>>>>");
 	// console.log(source);
 	// console.log("START", start);
-	// _.map(source, (src, i) => {
-	// console.log(i, ":", src.id);
-	// })
-	// console.log('po', start);
+	_.map(source, (src, i) => {
+		console.log(i, ":", src.id);
+	})
+	console.log('po', start);
 	let l = start.length,
 		len = l,
 		plen = l,

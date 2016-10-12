@@ -17,7 +17,7 @@ class TicketIndex {
 
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
-			logger.info('queue.emit.head', data);
+			// logger.info('queue.emit.head', data);
 			return this.fillIfEmpty(data.organization)
 				.then(res => this.index.loadIfOutdated(data.organization))
 				.then(res => this.actionActiveHead(data))
@@ -414,6 +414,8 @@ class TicketIndex {
 					len = tickets.length;
 				let dst = !_.isEmpty(destination) && destination || undefined;
 				while (len--) {
+					if (tickets[len].isInactive())
+						continue;
 					if (dst) {
 						tickets[len].unlockField("destination");
 						tickets[len].set("destination", dst);
@@ -441,6 +443,8 @@ class TicketIndex {
 			tick;
 		while (l--) {
 			tick = tickets[l];
+			if (tick.isInactive())
+				continue;
 			tick.unlockField("operator")
 				.unlockField("destination");
 			tick.set("operator", null);

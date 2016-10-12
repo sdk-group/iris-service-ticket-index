@@ -46,9 +46,9 @@ class AggregatorSection {
 		//@FIXIT: switch to ticket models
 		let session = this.session(leaf.session);
 		let tick = session.find(leaf.id);
-		// console.log("UPDATE", leaf, tick, session);
 		tick.getContainer()
 			.update(leaf);
+		console.log("UPDATE", leaf.id, tick);
 		this.render();
 		this.order();
 	}
@@ -91,7 +91,8 @@ class AggregatorSection {
 			l = this.data.length;
 		this.rendered = [];
 		while (l--) {
-			this.rendered = this.rendered.concat(this.data[l].render());
+			if (!this.data[l].isInactive())
+				this.rendered = this.rendered.concat(this.data[l].render());
 		}
 		console.log("RENDER");
 		this.validate();
