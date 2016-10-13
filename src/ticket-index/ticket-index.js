@@ -410,24 +410,34 @@ class TicketIndex {
 			.then(res => {
 				let tick = session.find(build_data.id);
 				tick.update(build_data);
-				let tickets = _.filter(session.tickets(), filter_fn),
-					len = tickets.length;
+				let tickets = session.tickets(),
+					len = tickets.length,
+					tick, cb_ticks = [];
 				let dst = !_.isEmpty(destination) && destination || undefined;
 				while (len--) {
-					if (tickets[len].isInactive())
+					tick = tickets[len];
+					if (tick.isInactive())
 						continue;
-					if (dst) {
-						tickets[len].unlockField("destination");
-						tickets[len].set("destination", dst);
-						tickets[len].lockField("destination");
-					}
-					if (operator) {
-						tickets[len].unlockField("operator");
-						tickets[len].set("operator", operator);
-						tickets[len].lockField("operator");
+					if (filter_fn(tick)) {
+						cb_ticks.push(tick);
+						if (dst) {
+							tick.unlockField("destination");
+							tick.set("destination", dst);
+							tick.lockField("destination");
+						}
+						if (operator) {
+							tick.unlockField("operator");
+							tick.set("operator", operator);
+							tick.lockField("operator");
+						}
+					} else {
+						tick.unlockField("destination");
+						tick.set("destination", null);
+						tick.unlockField("operator");
+						tick.set("operator", null);
 					}
 				}
-				callback && callback(tickets);
+				callback && callback(cb_ticks);
 				return this.index.saveTickets(tickets);
 			})
 			.then(res_tick => res_tick[0] && res_tick[0].serialize());
