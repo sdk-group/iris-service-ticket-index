@@ -412,29 +412,29 @@ class TicketIndex {
 				tick.update(build_data);
 				let tickets = session.tickets(),
 					len = tickets.length,
-					tick, cb_ticks = [];
+					t, cb_ticks = [];
 				let dst = !_.isEmpty(destination) && destination || undefined;
 				while (len--) {
-					tick = tickets[len];
-					if (tick.isInactive())
+					t = tickets[len];
+					if (t.isInactive())
 						continue;
-					if (filter_fn(tick)) {
-						cb_ticks.push(tick);
+					if (filter_fn(t)) {
+						cb_ticks.push(t);
 						if (dst) {
-							tick.unlockField("destination");
-							tick.set("destination", dst);
-							tick.lockField("destination");
+							t.unlockField("destination");
+							t.set("destination", dst);
+							t.lockField("destination");
 						}
 						if (operator) {
-							tick.unlockField("operator");
-							tick.set("operator", operator);
-							tick.lockField("operator");
+							t.unlockField("operator");
+							t.set("operator", operator);
+							t.lockField("operator");
 						}
 					} else {
-						tick.unlockField("destination");
-						tick.set("destination", null);
-						tick.unlockField("operator");
-						tick.set("operator", null);
+						t.unlockField("destination");
+						t.set("destination", null);
+						t.unlockField("operator");
+						t.set("operator", null);
 					}
 				}
 				callback && callback(cb_ticks);
