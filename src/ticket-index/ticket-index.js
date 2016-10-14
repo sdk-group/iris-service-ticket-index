@@ -18,6 +18,7 @@ class TicketIndex {
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			// logger.info('queue.emit.head', data);
+			console.log("HEAD", data);
 			return this.fillIfEmpty(data.organization)
 				.then(res => this.index.loadIfOutdated(data.organization))
 				.then(res => this.actionActiveHead(data))
