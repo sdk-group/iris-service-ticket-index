@@ -270,7 +270,7 @@ class AggregatorSection {
 					tick.set('time_description', service_data.live_operation_time);
 				} else {
 					let td = tick.time_description;
-					tick.set("time_description", [td[0], td[0] + service_data.prebook_operation_time])
+					tick.set("time_description", [td[0], td[0] + service_data.prebook_operation_time * tick.get("service_count")])
 				}
 				return tick;
 			});
@@ -282,7 +282,8 @@ class AggregatorSection {
 		return Promise.map(b_data, t_data => {
 			t_data.booking_date = this.moment()
 				.format();
-			// console.log("TDATA", t_data);
+			console.log("TDATA", t_data);
+
 			let service_data;
 			return this.patchwerk.get('Service', {
 					department: this.keydata.id,
@@ -305,9 +306,14 @@ class AggregatorSection {
 					if (tick.get("booking_method") == "prebook")
 						tick.modifyLabel(this.keydata.prebook_label_prefix, "prepend");
 					// console.log("a-s crticks II", tick);
-
+					if (t_data.label)
+						tick.set("label", t_data.label);
 					if (tick.get('booking_method') == 'live')
 						tick.set('time_description', service_data.live_operation_time);
+					else {
+						let td = tick.get("time_description");
+						tick.set('time_description', [td[0], td[0] + service_data.prebook_operation_time * (tick.get("service_count") || 1)]);
+					}
 					return tick;
 				});
 		})

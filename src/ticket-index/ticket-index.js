@@ -488,7 +488,7 @@ class TicketIndex {
 
 				let build_data = _.map(services, (srv_id, i) => {
 					return {
-						label: this._composePrefix(computed_priority),
+						label: source.label || this._composePrefix(computed_priority),
 						priority: computed_priority,
 
 						service: srv_id,
