@@ -46,8 +46,10 @@ class AggregatorSection {
 		//@FIXIT: switch to ticket models
 		let session = this.session(leaf.session);
 		let tick = session.find(leaf.id);
-		tick.getContainer()
-			.update(leaf);
+		tick.update(leaf);
+		session.invalidate();
+		// tick.getContainer()
+		// 	.update(leaf);
 		console.log("UPDATE", leaf.id, tick);
 		this.render();
 		this.order();
