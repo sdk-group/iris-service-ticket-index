@@ -94,6 +94,7 @@ class TicketIndex {
 		last = []
 	}) {
 		// console.log("UPD", last);
+		console.log("--------------------------------------------->", workstation, organization);
 		let upd = (last.constructor === Array) ? last : [last];
 		_.map(upd, entity => {
 			this.index.updateLeaf(organization, entity);
@@ -107,12 +108,8 @@ class TicketIndex {
 				organization: organization
 			}))
 			.then((res) => {
+				console.log(res);
 				receivers = _.keyBy(res, 'id');
-				let services = _(res)
-					.flatMap('provides')
-					.uniq()
-					.compact()
-					.value();
 
 				return _.mapValues(receivers, (receiver_data, receiver_id) => {
 					return _(receiver_data.occupied_by)
@@ -120,7 +117,7 @@ class TicketIndex {
 						.reduce((acc, operator) => {
 							let filter = {
 								organization: organization,
-								service: receiver_data.provides || services,
+								service: receiver_data.provides || [],
 								destination: receiver_data.id,
 								operator: operator
 							};
@@ -141,18 +138,13 @@ class TicketIndex {
 			})
 			.then((res) => {
 				receivers = _.keyBy(res, 'id');
-				let services = _(res)
-					.flatMap('provides')
-					.uniq()
-					.compact()
-					.value();
 
 				return _(receivers)
 					.map((receiver_data, receiver_id) => {
 						let filter = {
 							operator: receiver_data.occupied_by,
 							organization: organization,
-							service: receiver_data.provides || services,
+							service: receiver_data.provides || [],
 							destination: receiver_data.id,
 							state: ['postponed', 'registered', 'called', 'processing']
 						};
