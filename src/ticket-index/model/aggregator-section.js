@@ -44,13 +44,18 @@ class AggregatorSection {
 	//update
 	updateLeaf(leaf) {
 		//@FIXIT: switch to ticket models
+		if (!leaf.session) {
+			global.logger && logger.error({
+				"module": "ticket-index",
+				"method": "aggregator-section.updateLeaf",
+				"message": "No such session",
+				"data": leaf
+			});
+			return;
+		}
+
 		let session = this.session(leaf.session);
-		let tick = session.find(leaf.id);
-		tick.update(leaf);
-		session.invalidate();
-		// tick.getContainer()
-		// 	.update(leaf);
-		console.log("UPDATE", leaf.id, tick);
+		session.update(leaf.id, leaf);
 		this.render();
 		this.order();
 	}
