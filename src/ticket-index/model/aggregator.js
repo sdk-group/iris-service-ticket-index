@@ -11,10 +11,11 @@ let AggregatorSection = require("./aggregator-section.js");
 //ORDER PRESERVED
 const indexers_config = {
 	order: {
-		default: ['actualize', 'live-ordering', 'prebook-ordering']
+		default: ['live-ordering', 'prebook-ordering']
 	},
 	filter: {
-		default: ['state-allowed', 'prebook-timing', 'service-allowed', 'workstation-provides', 'operator-provides']
+		default: ["universal"]
+			// default: ['state-allowed', 'prebook-timing', 'service-allowed', 'workstation-provides', 'operator-provides']
 	}
 };
 
