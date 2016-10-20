@@ -13,36 +13,16 @@ class TicketIndex {
 
 	init(config) {
 		this.queue_head_size = config.queue_head_size;
+		this.queue_head_throttle = config.queue_head_throttle_seconds * 1000 || 1000;
 	}
 
 	launch() {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			// logger.info('queue.emit.head', data);
-			console.log("HEAD", data);
-			return this.fillIfEmpty(data.organization)
-				.then(res => this.index.loadIfOutdated(data.organization))
-				.then(res => this.actionActiveHead(data))
-				.then((res) => {
-					// console.log("STRUCT I", require('util')
-					// 	.inspect(res, {
-					// 		depth: null
-					// 	}));
-					_.map(res, (ws_head, ws_id) => {
-						_.map(ws_head, (head, user_id) => {
-							let to_join = ['queue.head', this.index.addr(data.organization), ws_id];
-							let addr = {
-								user_id
-							};
-							console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
-							this.emitter.emit('broadcast', {
-								event: _.join(to_join, "."),
-								addr,
-								data: head
-							});
-						});
-					});
-					return Promise.resolve(true);
-				});
+
+			// console.log("HEAD", data);
+			return this.updateIndex(data)
+				.then(() => this._emitHead(data));
 		});
 
 
@@ -51,6 +31,38 @@ class TicketIndex {
 	}
 
 	//API
+
+	_emitHead(data) {
+		let time = process.hrtime();
+		return this.fillIfEmpty(data.organization)
+			.then(res => this.index.loadIfOutdated(data.organization))
+			.then(res => this.actionActiveHead(data))
+			.then((res) => {
+				// console.log("STRUCT I", require('util')
+				// 	.inspect(res, {
+				// 		depth: null
+				// 	}));
+				let diff = process.hrtime(time);
+				console.log('ACTIVE HEAD IN %d mseconds', (diff[0] * 1e9 + diff[1]) / 1000000);
+				_.map(res, (ws_head, ws_id) => {
+					_.map(ws_head, (head, user_id) => {
+						let to_join = ['queue.head', this.index.addr(data.organization), ws_id];
+						let addr = {
+							user_id
+						};
+						// console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
+						this.emitter.emit('broadcast', {
+							event: _.join(to_join, "."),
+							addr,
+							data: head
+						});
+					});
+				});
+				return Promise.resolve(true);
+			});
+	}
+
+
 	fill() {
 		return this.emitter.addTask('workstation', {
 				_action: 'organization-data'
@@ -87,19 +99,24 @@ class TicketIndex {
 		return this.dispenser.dispense(section, sz, filter);
 	}
 
-	actionActiveHead({
+	updateIndex({
 		organization,
-		size,
-		workstation,
 		last = []
 	}) {
-		// console.log("UPD", last);
-		console.log("--------------------------------------------->", workstation, organization);
 		let upd = (last.constructor === Array) ? last : [last];
 		_.map(upd, entity => {
 			this.index.updateLeaf(organization, entity);
 		});
+		return Promise.resolve(true);
+	}
 
+	actionActiveHead({
+		organization,
+		size,
+		workstation
+	}) {
+		// console.log("UPD", last);
+		// console.log("--------------------------------------------->", workstation, organization)
 		let receivers;
 		return (workstation ? this.emitter.addTask('workstation', {
 				_action: 'workstation',
@@ -108,7 +125,7 @@ class TicketIndex {
 				organization: organization
 			}))
 			.then((res) => {
-				console.log(res);
+				// console.log(res);
 				receivers = _.keyBy(res, 'id');
 
 				return _.mapValues(receivers, (receiver_data, receiver_id) => {
