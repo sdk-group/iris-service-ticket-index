@@ -9,7 +9,8 @@ class AggregatorSection {
 		this.keydata = keydata;
 		this.patchwerk = patchwerk;
 
-		this.keymap = {};
+		this.keymap_active = {};
+		this.keymap_inactive = {};
 		this.data = [];
 		this.rendered = [];
 
@@ -33,8 +34,8 @@ class AggregatorSection {
 
 	//search
 	session(id) {
-		// console.log("GETSESSION", code, this.keymap);
-		return this.data[this.keymap[id]];
+		// console.log("GETSESSION", code, this.keymap_active);
+		return this.data[this.keymap_active[id]] || this.data[this.keymap_inactive[id]];
 	}
 
 	ticket(idx) {
@@ -56,6 +57,19 @@ class AggregatorSection {
 
 		let session = this.session(leaf.session);
 		session.update(leaf.id, leaf);
+		console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
+		if (session.isInactive() && !!this.keymap_active[leaf.session]) {
+			console.log("swtiching to inactive", leaf.session);
+			let pos = this.keymap_active[leaf.session];
+			_.unset(this.keymap_active, leaf.session);
+			this.keymap_inactive[leaf.session] = pos;
+		}
+		if (!session.isInactive() && this.keymap_inactive[leaf.session]) {
+			console.log("swtiching to active", leaf.session);
+			let pos = this.keymap_inactive[leaf.session];
+			_.unset(this.keymap_inactive, leaf.session);
+			this.keymap_active[leaf.session] = pos;
+		}
 		this.render();
 		this.order();
 	}
@@ -95,11 +109,14 @@ class AggregatorSection {
 
 	render() {
 		let result = [],
-			l = this.data.length;
+			keys = Object.keys(this.keymap_active),
+			l = keys.length,
+			item;
 		this.rendered = [];
 		while (l--) {
-			if (!this.data[l].isInactive())
-				this.rendered = this.rendered.concat(this.data[l].render());
+			item = this.data[this.keymap_active[keys[l]]];
+			if (!item.isInactive())
+				this.rendered = this.rendered.concat(item.render());
 		}
 		console.log("RENDER");
 		this.validate();
@@ -130,7 +147,7 @@ class AggregatorSection {
 	}
 
 	flush() {
-		this.keymap = {};
+		this.keymap_active = {};
 		this.data = [];
 		this.rendered = [];
 		this.invalid();
@@ -145,12 +162,13 @@ class AggregatorSection {
 
 		let id = session.identifier();
 		session.onUpdate(this.invalidate.bind(this));
+		let keymap = session.isInactive() ? this.keymap_inactive : this.keymap_active;
 
-		if (this.keymap[id] === undefined) {
+		if (keymap[id] === undefined) {
 			this.data.push(session);
-			this.keymap[id] = this.data.length - 1;
+			keymap[id] = this.data.length - 1;
 		} else {
-			this.data[this.keymap[id]] = session;
+			this.data[keymap[id]] = session;
 		}
 		this.invalidate();
 		return this;
