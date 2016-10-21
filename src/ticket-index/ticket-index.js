@@ -378,8 +378,6 @@ class TicketIndex {
 					.virtualizeTicket(build_data);
 			})
 			.then(ticket => {
-				console.log("==================================================================================================================================\n",
-					ticket, "!!!!!!!!!!!!!!!!\n", anchestor_tick);
 				return this.index.saveTickets([ticket, anchestor_tick])
 			})
 			.then((tickets) => {
@@ -494,14 +492,16 @@ class TicketIndex {
 			})
 			.then(priority => {
 				let computed_priority = this._computePriority(priority, org_data.priority_description, source.priority);
-
+				let pack_sign = services.length > 1;
 				let build_data = _.map(services, (srv_id, i) => {
 					return {
-						label: source.label || this._composePrefix(computed_priority),
-						priority: computed_priority,
+						label: this._composePrefix(computed_priority),
+						forced_label: source.label,
+						priority: _.cloneDeep(computed_priority),
 
 						service: srv_id,
 						service_count: _.parseInt(service_count[i]) || 1,
+						pack_member: pack_sign,
 
 						operator: source.operator,
 						destination: source.destination,
