@@ -57,7 +57,7 @@ class AggregatorSection {
 
 		let session = this.session(leaf.session);
 		session.update(leaf.id, leaf);
-		console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
+		// console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
 		if (session.isInactive() && !!this.keymap_active[leaf.session]) {
 			console.log("swtiching to inactive", leaf.session);
 			let pos = this.keymap_active[leaf.session];
@@ -331,8 +331,8 @@ class AggregatorSection {
 					if (tick.get("booking_method") == "prebook")
 						tick.modifyLabel(this.keydata.prebook_label_prefix, "prepend");
 					// console.log("a-s crticks II", tick);
-					if (t_data.label)
-						tick.set("label", t_data.label);
+					if (t_data.forced_label)
+						tick.set("label", t_data.forced_label);
 					if (tick.get('booking_method') == 'live')
 						tick.set('time_description', service_data.live_operation_time);
 					else {

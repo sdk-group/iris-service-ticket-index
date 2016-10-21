@@ -33,7 +33,6 @@ module.exports = function (prefiltered, source, params) {
 			prefiltered[i] = false;
 			continue;
 		}
-
 		if (src.properties.booking_method == 'prebook' &&
 			src.properties.time_description[0] > (params.now + params.prebook_show_interval + 30)) {
 			prefiltered[i] = false;
