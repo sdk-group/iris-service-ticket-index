@@ -25,6 +25,10 @@ class TicketIndex {
 				.then(() => this._emitHead(data));
 		});
 
+		this.emitter.listenTask('queue.update.head', (data) => {
+			return this.updateIndex(data);
+		});
+
 
 		return this.fill()
 			.then(() => true);

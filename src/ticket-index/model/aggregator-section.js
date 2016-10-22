@@ -45,7 +45,9 @@ class AggregatorSection {
 	//update
 	updateLeaf(leaf) {
 		//@FIXIT: switch to ticket models
-		if (!leaf.session) {
+
+		let session = this.session(leaf.session);
+		if (!session) {
 			global.logger && logger.error({
 				"module": "ticket-index",
 				"method": "aggregator-section.updateLeaf",
@@ -55,7 +57,6 @@ class AggregatorSection {
 			return;
 		}
 
-		let session = this.session(leaf.session);
 		session.update(leaf.id, leaf);
 		// console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
 		if (session.isInactive() && !!this.keymap_active[leaf.session]) {
@@ -222,11 +223,9 @@ class AggregatorSection {
 
 	saveSession(session) {
 		let model = session.extract();
-		let date = this.moment()
-			.format('YYYY-MM-DD');
 		return this.patchwerk.save(model, {
 				department: this.name,
-				date: date
+				date: session.dedication()
 			})
 			.then(res => this.patchwerk.create('TicketSessionLookup', {
 				content: session.identifier()
