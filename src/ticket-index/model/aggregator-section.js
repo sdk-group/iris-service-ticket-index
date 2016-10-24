@@ -223,8 +223,9 @@ class AggregatorSection {
 
 	saveSession(session) {
 		let model = session.extract();
+		console.log("Save session", this.name);
 		return this.patchwerk.save(model, {
-				department: this.name,
+				department: session.attachment(),
 				date: session.dedication()
 			})
 			.then(res => this.patchwerk.create('TicketSessionLookup', {

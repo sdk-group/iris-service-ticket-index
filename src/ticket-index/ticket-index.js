@@ -515,6 +515,7 @@ class TicketIndex {
 						booking_method: source.booking_method,
 						history: source.history,
 						time_description: source.time_description,
+						initial_time_description: _.clone(source.time_description),
 
 						state: source.state,
 						called: 0,
