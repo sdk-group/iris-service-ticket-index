@@ -42,10 +42,10 @@ class TicketIndex {
 			.then(res => this.index.loadIfOutdated(data.organization))
 			.then(res => this.actionActiveHead(data))
 			.then((res) => {
-				console.log("STRUCT I", require('util')
-					.inspect(res, {
-						depth: null
-					}));
+				// console.log("STRUCT I", require('util')
+				// 	.inspect(res, {
+				// 		depth: null
+				// 	}));
 				let diff = process.hrtime(time);
 				console.log('ACTIVE HEAD IN %d mseconds', (diff[0] * 1e9 + diff[1]) / 1000000);
 				_.map(res, (ws_head, ws_id) => {
@@ -122,7 +122,6 @@ class TicketIndex {
 	}) {
 		// console.log("UPD", last);
 		// console.log("--------------------------------------------->", workstation, organization)
-		let receivers;
 		return this.serviceProviders({
 				organization: organization,
 				workstation: workstation,
@@ -153,23 +152,29 @@ class TicketIndex {
 		organization,
 		id
 	}) {
-		let receivers;
 		return this.serviceProviders({
 				organization: organization
 			})
-			.then((receivers) => {
-				console.log("RECEIVER", receivers);
+			.then(({
+				providers: receivers,
+				occupation: occupation_map
+			}) => {
+				console.log("RECEIVER", receivers, occupation_map);
 
-				return _(receivers)
-					.map((receiver_data, receiver_id) => {
-						let filter = {
-							operator: receiver_data.occupied_by,
-							organization: organization,
-							service: receiver_data.provides || [],
-							destination: receiver_data.id,
-							state: ['postponed', 'registered', 'called', 'processing']
-						};
-						return this.dispenser.findIndex(organization, id, filter);
+
+				return _(occupation_map)
+					.flatMap((op_ids, ws_id) => {
+						return _.map(op_ids, (operator) => {
+							let receiver_data = receivers[ws_id] || receivers[operator];
+							let filter = {
+								organization: organization,
+								service: receiver_data.provides || [],
+								destination: ws_id,
+								state: ['postponed', 'registered', 'called', 'processing'],
+								operator: operator
+							};
+							return this.dispenser.findIndex(organization, id, filter);
+						});
 					})
 					.max();
 			});
@@ -200,7 +205,6 @@ class TicketIndex {
 				return this.takeHead(organization, filter, size);
 			});
 	}
-
 	actionConfirmSession({
 		source: data,
 		org_data: org_data,
