@@ -20,7 +20,7 @@ class TicketIndex {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			// logger.info('queue.emit.head', data);
 
-			// console.log("HEAD", data);
+			console.log("HEAD", data);
 			return this.updateIndex(data)
 				.then(() => this._emitHead(data));
 		});
@@ -42,10 +42,10 @@ class TicketIndex {
 			.then(res => this.index.loadIfOutdated(data.organization))
 			.then(res => this.actionActiveHead(data))
 			.then((res) => {
-				// console.log("STRUCT I", require('util')
-				// 	.inspect(res, {
-				// 		depth: null
-				// 	}));
+				console.log("STRUCT I", require('util')
+					.inspect(res, {
+						depth: null
+					}));
 				let diff = process.hrtime(time);
 				console.log('ACTIVE HEAD IN %d mseconds', (diff[0] * 1e9 + diff[1]) / 1000000);
 				_.map(res, (ws_head, ws_id) => {
@@ -117,34 +117,34 @@ class TicketIndex {
 	actionActiveHead({
 		organization,
 		size,
-		workstation
+		workstation,
+		operator
 	}) {
 		// console.log("UPD", last);
 		// console.log("--------------------------------------------->", workstation, organization)
 		let receivers;
-		return (workstation ? this.emitter.addTask('workstation', {
-				_action: 'workstation',
-				workstation
-			}) : this.serviceProviders({
-				organization: organization
-			}))
-			.then((res) => {
-				// console.log(res);
-				receivers = _.keyBy(res, 'id');
-
-				return _.mapValues(receivers, (receiver_data, receiver_id) => {
-					return _(receiver_data.occupied_by)
-						.castArray()
-						.reduce((acc, operator) => {
-							let filter = {
-								organization: organization,
-								service: receiver_data.provides || [],
-								destination: receiver_data.id,
-								operator: operator
-							};
-							acc[operator] = this.takeHead(organization, filter, size);
-							return acc;
-						}, {});
+		return this.serviceProviders({
+				organization: organization,
+				workstation: workstation,
+				operator: operator
+			})
+			.then(({
+				providers: receivers,
+				occupation: occupation_map
+			}) => {
+				console.log("RECEIVER", receivers);
+				return _.mapValues(occupation_map, (op_ids, ws_id) => {
+					return _.reduce(op_ids, (acc, operator) => {
+						let receiver_data = receivers[ws_id] || receivers[operator];
+						let filter = {
+							organization: organization,
+							service: receiver_data.provides || [],
+							destination: ws_id,
+							operator: operator
+						};
+						acc[operator] = this.takeHead(organization, filter, size);
+						return acc;
+					}, {});
 				});
 			});
 	}
@@ -157,8 +157,8 @@ class TicketIndex {
 		return this.serviceProviders({
 				organization: organization
 			})
-			.then((res) => {
-				receivers = _.keyBy(res, 'id');
+			.then((receivers) => {
+				console.log("RECEIVER", receivers);
 
 				return _(receivers)
 					.map((receiver_data, receiver_id) => {
@@ -254,15 +254,66 @@ class TicketIndex {
 
 
 	serviceProviders({
-		organization
+		organization,
+		operator,
+		workstation
 	}) {
-		return this.emitter.addTask('workstation', {
-				_action: 'active-workstations',
-				organization: organization,
-				state: ['active', 'paused'],
-				device_type: 'control-panel'
+		return Promise.props({
+				occupation_map: this.emitter.addTask('workstation', {
+					_action: 'occupation-map',
+					organization: organization,
+					device_type: 'control-panel'
+				}),
+				org: this.emitter.addTask('workstation', {
+					_action: 'organization-data',
+					organization: organization,
+					embed_schedules: false
+				})
 			})
-			.then((res) => res['control-panel']);
+			.then((res) => {
+				let org = res.org[organization];
+				let mode = org.org_merged.workstation_filtering_enabled ? 'destination' : 'operator';
+				return Promise.props({
+					providers: mode == 'destination' ? this._workstationProviders(organization, workstation) : this._employeeProviders(organization, operator),
+					occupation: res.occupation_map
+				});
+			});
+	}
+
+	_workstationProviders(organization, concrete) {
+		return concrete ? this.emitter.addTask('workstation', {
+				_action: 'by-id',
+				workstation: concrete
+			})
+			.then(res => {
+				if (res[concrete].attached_to == organization && (res[concrete].state == 'active' || res[concrete].state == 'paused'))
+					return res;
+				return {};
+			}) :
+			this.emitter.addTask('workstation', {
+				_action: 'providers',
+				organization: organization,
+				device_type: 'control-panel',
+				state: ['active', 'paused']
+			});
+	}
+
+	_employeeProviders(organization, concrete) {
+		return concrete ? this.emitter.addTask('agent', {
+				_action: 'by-id',
+				agent_id: concrete
+			})
+			.then(res => {
+				if (res[concrete].state == 'active' || res[concrete].state == 'paused')
+					return res;
+				return {};
+			}) :
+			this.emitter.addTask('agent', {
+				_action: 'providers',
+				role: 'Operator',
+				organization: organization,
+				state: ['active', 'paused']
+			});
 	}
 
 	actionCurrent({
