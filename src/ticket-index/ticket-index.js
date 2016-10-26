@@ -114,6 +114,145 @@ class TicketIndex {
 		return Promise.resolve(true);
 	}
 
+	actionProvidersByWorkstation({
+		organization,
+		concrete
+	}) {
+		return this.emitter.addTask('workstation', {
+				_action: 'organization-data',
+				organization: organization,
+				embed_schedules: false
+			})
+			.then((res) => {
+				let org = res[organization];
+				let mode = org.org_merged.workstation_filtering_enabled ? 'destination' : 'operator';
+
+				return Promise.props({
+					providers: mode != 'destination' ? this.emitter.addTask('agent', {
+						_action: 'providers',
+						role: 'Operator',
+						organization: organization,
+						state: ['active']
+					}) : false,
+					workstations: concrete ? this.emitter.addTask('workstation', {
+							_action: 'by-id',
+							workstation: concrete
+						})
+						.then(res => _.values(res)) : this.emitter.addTask('workstation', {
+							_action: 'get-workstations-cache',
+							organization: organization,
+							device_type: 'control-panel'
+						})
+						.then(res => res['control-panel']),
+					mode: mode
+				});
+			})
+			.then(({
+				providers,
+				workstations,
+				mode
+			}) => {
+				if (mode != 'destination') {
+					let l = workstations.length,
+						ll, lll, op, srv,
+						ws, provision;
+					while (l--) {
+						ws = workstations[l];
+						provision = {}, ll = ws.occupied_by.length;
+						while (ll--) {
+							op = providers[ws.occupied_by[ll]];
+							lll = op.provides.length;
+							while (lll--) {
+								srv = op.provides[lll];
+								if (!provision[srv])
+									provision[srv] = true;
+							}
+						}
+						ws.provides = provision['*'] ? '*' : Object.keys(provision);
+					}
+				}
+				// console.log("######################################################\n", workstations);
+				return workstations;
+			});
+	}
+
+
+	serviceProviders({
+		organization,
+		operator,
+		workstation,
+		mapping = true
+	}) {
+		return Promise.props({
+				occupation_map: mapping ? this.emitter.addTask('workstation', {
+					_action: 'occupation-map',
+					organization: organization,
+					device_type: 'control-panel',
+					workstation: workstation,
+					agent: operator
+				}) : false,
+				org: this.emitter.addTask('workstation', {
+					_action: 'organization-data',
+					organization: organization,
+					embed_schedules: false
+				})
+			})
+			.then((res) => {
+				let org = res.org[organization];
+				let mode = org.org_merged.workstation_filtering_enabled ? 'destination' : 'operator';
+				let map;
+				if (mapping) {
+					if (workstation) {
+						map = _.pick(res.occupation_map, workstation);
+					} else {
+						map = res.occupation_map;
+					}
+				}
+				return Promise.props({
+					providers: mode == 'destination' ? this._workstationProviders(organization, workstation) : this._employeeProviders(organization, operator),
+					occupation: map,
+					mode: mode
+				});
+			});
+	}
+
+	_workstationProviders(organization, concrete) {
+		return concrete ? this.emitter.addTask('workstation', {
+				_action: 'by-id',
+				workstation: concrete
+			})
+			.then(res => {
+				if (res[concrete].attached_to == organization && (res[concrete].state == 'active' || res[concrete].state == 'paused'))
+					return res;
+				return {};
+			}) :
+			this.emitter.addTask('workstation', {
+				_action: 'providers',
+				organization: organization,
+				device_type: 'control-panel',
+				state: ['active', 'paused']
+			});
+	}
+
+	_employeeProviders(organization, concrete) {
+		return concrete ? this.emitter.addTask('agent', {
+				_action: 'by-id',
+				agent_id: concrete
+			})
+			.then(res => {
+				if (res[concrete].state == 'active' || res[concrete].state == 'paused')
+					return res;
+				return {};
+			}) :
+			this.emitter.addTask('agent', {
+				_action: 'providers',
+				role: 'Operator',
+				organization: organization,
+				state: ['active', 'paused']
+			});
+	}
+
+
 	actionActiveHead({
 		organization,
 		size,
@@ -131,7 +270,8 @@ class TicketIndex {
 				providers: receivers,
 				occupation: occupation_map
 			}) => {
-				console.log("RECEIVER", receivers);
+				// console.log("RECEIVER", receivers);
+				// console.log("OCCUPATION", occupation_map);
 				return _.mapValues(occupation_map, (op_ids, ws_id) => {
 					return _.reduce(op_ids, (acc, operator) => {
 						let receiver_data = receivers[ws_id] || receivers[operator];
@@ -159,10 +299,10 @@ class TicketIndex {
 				providers: receivers,
 				occupation: occupation_map
 			}) => {
-				console.log("RECEIVER", receivers, occupation_map);
+				// console.log("RECEIVER", receivers, occupation_map);
 
-
-				return _(occupation_map)
+				let providers = [];
+				let pos = _(occupation_map)
 					.flatMap((op_ids, ws_id) => {
 						return _.map(op_ids, (operator) => {
 							let receiver_data = receivers[ws_id] || receivers[operator];
@@ -173,10 +313,18 @@ class TicketIndex {
 								state: ['postponed', 'registered', 'called', 'processing'],
 								operator: operator
 							};
-							return this.dispenser.findIndex(organization, id, filter);
+							let val = this.dispenser.findIndex(organization, id, filter);
+							if (val != -1)
+								providers.push(ws_id);
+							return val;
 						});
 					})
 					.max();
+
+				return {
+					position: pos,
+					providers: providers
+				};
 			});
 	}
 
@@ -188,14 +336,15 @@ class TicketIndex {
 		size
 	}) {
 		let srv = _.castArray(services);
-		return (_.isEmpty(srv) ? this.emitter.addTask('workstation', {
-					_action: 'workstation',
-					workstation: workstation
-				})
-				.then(res => res[workstation]) : Promise.resolve({
-					provides: srv
-				}))
-			.then((op) => {
+		return this.serviceProviders({
+				organization: organization,
+				operator: operator,
+				workstation: workstation
+			})
+			.then(({
+				providers
+			}) => {
+				let op = providers[workstation] || providers[operator];
 				let filter = {
 					organization: organization,
 					service: op.provides,
@@ -256,70 +405,6 @@ class TicketIndex {
 			});
 	}
 
-
-	serviceProviders({
-		organization,
-		operator,
-		workstation
-	}) {
-		return Promise.props({
-				occupation_map: this.emitter.addTask('workstation', {
-					_action: 'occupation-map',
-					organization: organization,
-					device_type: 'control-panel'
-				}),
-				org: this.emitter.addTask('workstation', {
-					_action: 'organization-data',
-					organization: organization,
-					embed_schedules: false
-				})
-			})
-			.then((res) => {
-				let org = res.org[organization];
-				let mode = org.org_merged.workstation_filtering_enabled ? 'destination' : 'operator';
-				return Promise.props({
-					providers: mode == 'destination' ? this._workstationProviders(organization, workstation) : this._employeeProviders(organization, operator),
-					occupation: res.occupation_map
-				});
-			});
-	}
-
-	_workstationProviders(organization, concrete) {
-		return concrete ? this.emitter.addTask('workstation', {
-				_action: 'by-id',
-				workstation: concrete
-			})
-			.then(res => {
-				if (res[concrete].attached_to == organization && (res[concrete].state == 'active' || res[concrete].state == 'paused'))
-					return res;
-				return {};
-			}) :
-			this.emitter.addTask('workstation', {
-				_action: 'providers',
-				organization: organization,
-				device_type: 'control-panel',
-				state: ['active', 'paused']
-			});
-	}
-
-	_employeeProviders(organization, concrete) {
-		return concrete ? this.emitter.addTask('agent', {
-				_action: 'by-id',
-				agent_id: concrete
-			})
-			.then(res => {
-				if (res[concrete].state == 'active' || res[concrete].state == 'paused')
-					return res;
-				return {};
-			}) :
-			this.emitter.addTask('agent', {
-				_action: 'providers',
-				role: 'Operator',
-				organization: organization,
-				state: ['active', 'paused']
-			});
-	}
-
 	actionCurrent({
 		workstation,
 		operator,
@@ -338,10 +423,8 @@ class TicketIndex {
 	actionNext({
 		workstation,
 		operator,
-		organization,
-		services = []
+		organization
 	}) {
-		let srv = _.castArray(services);
 		let curr_tick, curr_session;
 		let current = this.actionCurrent({
 			workstation,
@@ -355,14 +438,16 @@ class TicketIndex {
 		console.log("CURRENT", current);
 
 
-		return (_.isEmpty(srv) ? this.emitter.addTask('workstation', {
-					_action: 'workstation',
-					workstation
-				})
-				.then(res => res[workstation]) : Promise.resolve({
-					provides: srv
-				}))
-			.then((op) => {
+		return this.serviceProviders({
+				organization: organization,
+				operator: operator,
+				workstation: workstation,
+				mapping: false
+			})
+			.then(({
+				providers
+			}) => {
+				let op = providers[workstation] || providers[operator];
 				let flt = {
 					organization: organization,
 					service: op.provides,
@@ -449,6 +534,7 @@ class TicketIndex {
 
 	actionSplittedRoute({
 		ticket: tick_data,
+		organization: organization,
 		destination: destination,
 		operator: operator,
 		callback: callback
@@ -456,19 +542,25 @@ class TicketIndex {
 		let session;
 		let build_data = tick_data;
 		let filter_fn;
-		return this.emitter.addTask('workstation', {
-				_action: 'workstation',
-				workstation: destination
+		return this.actionProvidersByWorkstation({
+				organization: organization,
+				concrete: destination
 			})
-			.then((res) => {
-				let services = _(res)
-					.flatMap('provides')
-					.uniq()
-					.compact()
-					.value();
-
+			.then((providers) => {
+				let provision = {},
+					l, srv;
+				_.map(providers, p => {
+					l = p.provides.length;
+					while (l--) {
+						srv = p.provides[l];
+						if (!provision[srv])
+							provision[srv] = true;
+					}
+				});
+				let services = provision['*'] ? '*' : Object.keys(provision);
+				// console.log("SRV-------------------------------------->>>>>>>>>>>>>>", services);
 				filter_fn = function (entity) {
-					return !!~services.indexOf(entity.get("service"));
+					return services === '*' || !!~services.indexOf(entity.get("service"));
 				}
 				session = this.index.session(build_data.org_destination, build_data.session);
 				session.splittedRoute(filter_fn);
