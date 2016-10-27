@@ -301,7 +301,6 @@ class TicketIndex {
 			}) => {
 				// console.log("RECEIVER", receivers, occupation_map);
 
-				let providers = [];
 				let pos = _(occupation_map)
 					.flatMap((op_ids, ws_id) => {
 						return _.map(op_ids, (operator) => {
@@ -313,18 +312,12 @@ class TicketIndex {
 								state: ['postponed', 'registered', 'called', 'processing'],
 								operator: operator
 							};
-							let val = this.dispenser.findIndex(organization, id, filter);
-							if (val != -1)
-								providers.push(ws_id);
-							return val;
+							return this.dispenser.findIndex(organization, id, filter);
 						});
 					})
 					.max();
 
-				return {
-					position: pos,
-					providers: providers
-				};
+				return pos;
 			});
 	}
 
