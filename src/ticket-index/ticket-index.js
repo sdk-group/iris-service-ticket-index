@@ -161,6 +161,8 @@ class TicketIndex {
 						provision = {}, ll = ws.occupied_by.length;
 						while (ll--) {
 							op = providers[ws.occupied_by[ll]];
+							if (!op)
+								continue;
 							lll = op.provides.length;
 							while (lll--) {
 								srv = op.provides[lll];

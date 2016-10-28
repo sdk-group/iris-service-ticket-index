@@ -71,8 +71,9 @@ class AggregatorSection {
 			_.unset(this.keymap_inactive, leaf.session);
 			this.keymap_active[leaf.session] = pos;
 		}
-		this.render();
-		this.order();
+		this.invalidate();
+		// this.render();
+		// this.order();
 	}
 
 	next(curr_idx) {
@@ -86,7 +87,7 @@ class AggregatorSection {
 		params.date = curr_moment.format('YYYY-MM-DD');
 		params.now = curr_moment.diff(curr_moment.clone()
 			.startOf('day'), 'seconds');
-		this.ordering.run(params, false, this.getRendered());
+		this.ordering.run(params, false, this.rendered);
 		return this;
 	}
 
@@ -96,7 +97,7 @@ class AggregatorSection {
 		params.now = curr_moment.diff(curr_moment.clone()
 			.startOf('day'), 'seconds');
 		params.state = params.state || '*';
-		return this.filtering.run(params, this.ordering.out(), this.getRendered());
+		return this.filtering.run(params, this.ordering.out(), this.rendered);
 	}
 
 	isAppliable(params = {}, entity) {
@@ -129,6 +130,7 @@ class AggregatorSection {
 		//if(expired) return this.render()
 		if (this.invalid()) {
 			this.render();
+			this.order();
 		}
 		return this.rendered;
 	}
