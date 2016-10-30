@@ -30,7 +30,7 @@ class IndexDispenser {
 
 			switch (src.properties.state) {
 			case 'registered':
-				if (result.live.count < size) {
+				if (size === false || result.live.count < size) {
 					result.live.tickets.push(serialized);
 				}
 				result.live.count++;
@@ -42,7 +42,7 @@ class IndexDispenser {
 				result.live.tickets.unshift(serialized);
 				break;
 			case 'postponed':
-				if (result.postponed.count < size) {
+				if (size === false || result.postponed.count < size) {
 					result.postponed.tickets.push(serialized);
 				}
 				result.postponed.count++;

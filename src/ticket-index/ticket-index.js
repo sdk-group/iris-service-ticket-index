@@ -275,15 +275,15 @@ class TicketIndex {
 				// console.log("RECEIVER", receivers);
 				// console.log("OCCUPATION", occupation_map);
 				return _.mapValues(occupation_map, (op_ids, ws_id) => {
-					return _.reduce(op_ids, (acc, operator) => {
-						let receiver_data = receivers[ws_id] || receivers[operator];
+					return _.reduce(op_ids, (acc, op_id) => {
+						let receiver_data = receivers[ws_id] || receivers[op_id];
 						let filter = {
 							organization: organization,
 							service: receiver_data.provides || [],
 							destination: ws_id,
-							operator: operator
+							operator: op_id
 						};
-						acc[operator] = this.takeHead(organization, filter, size);
+						acc[op_id] = this.takeHead(organization, filter, size);
 						return acc;
 					}, {});
 				});
@@ -327,10 +327,8 @@ class TicketIndex {
 		workstation,
 		operator,
 		organization,
-		services = [],
 		size
 	}) {
-		let srv = _.castArray(services);
 		return this.serviceProviders({
 				organization: organization,
 				operator: operator,
@@ -339,7 +337,10 @@ class TicketIndex {
 			.then(({
 				providers
 			}) => {
+				console.log(providers);
 				let op = providers[workstation] || providers[operator];
+				if (!op)
+					return Promise.reject(new Error("Requested operator/workstation is inactive."));
 				let filter = {
 					organization: organization,
 					service: op.provides,
