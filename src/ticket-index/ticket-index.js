@@ -42,10 +42,10 @@ class TicketIndex {
 			.then(res => this.index.loadIfOutdated(data.organization))
 			.then(res => this.actionActiveHead(data))
 			.then((res) => {
-				// console.log("STRUCT I", require('util')
-				// 	.inspect(res, {
-				// 		depth: null
-				// 	}));
+				console.log("STRUCT I", require('util')
+					.inspect(res, {
+						depth: null
+					}));
 				let diff = process.hrtime(time);
 				console.log('ACTIVE HEAD IN %d mseconds', (diff[0] * 1e9 + diff[1]) / 1000000);
 				_.map(res, (ws_head, ws_id) => {
@@ -54,7 +54,7 @@ class TicketIndex {
 						let addr = {
 							user_id
 						};
-						// console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
+						console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
 						this.emitter.emit('broadcast', {
 							event: _.join(to_join, "."),
 							addr,
@@ -277,6 +277,13 @@ class TicketIndex {
 				return _.mapValues(occupation_map, (op_ids, ws_id) => {
 					return _.reduce(op_ids, (acc, op_id) => {
 						let receiver_data = receivers[ws_id] || receivers[op_id];
+						if (!receiver_data) {
+							console.log("##############################################################################################");
+							console.log("RECEIVER MISSING", op_id, ws_id, occupation_map);
+							console.log("##############################################################################################");
+							return acc;
+						}
+
 						let filter = {
 							organization: organization,
 							service: receiver_data.provides || [],
@@ -337,7 +344,7 @@ class TicketIndex {
 			.then(({
 				providers
 			}) => {
-				console.log(providers);
+				// console.log(providers);
 				let op = providers[workstation] || providers[operator];
 				if (!op)
 					return Promise.reject(new Error("Requested operator/workstation is inactive."));
@@ -431,7 +438,7 @@ class TicketIndex {
 			current: null,
 			next: null
 		};
-		console.log("CURRENT", current);
+		// console.log("CURRENT", current);
 
 
 		return this.serviceProviders({

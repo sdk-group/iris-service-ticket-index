@@ -48,6 +48,7 @@
 		"bluebird": "^3.4.6",
 		"del": "^2.2.2",
 		"global-queue": "git+https://github.com/artificial-life/global-queue.git#experiments",
+		"iris-builder": "git+https://github.com/sdk-group/iris-builder.git",
 		"ticket-session": "git+https://github.com/YuuKohaku/ticket-session.git",
 		"gulp": "^3.9.1",
 		"gulp-babel": "^6.1.2",
