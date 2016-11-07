@@ -341,6 +341,7 @@ class AggregatorSection {
 						let td = tick.get("time_description");
 						tick.set('time_description', [td[0], td[0] + service_data.prebook_operation_time * (tick.get("service_count") || 1)]);
 					}
+					tick.set("initial_time_description", tick.get("time_description"))
 					return tick;
 				});
 		})

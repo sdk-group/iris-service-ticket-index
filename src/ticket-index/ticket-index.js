@@ -158,6 +158,8 @@ class TicketIndex {
 						ws, provision;
 					while (l--) {
 						ws = workstations[l];
+						if (!ws)
+							continue;
 						provision = {}, ll = ws.occupied_by.length;
 						while (ll--) {
 							op = providers[ws.occupied_by[ll]];
@@ -554,6 +556,7 @@ class TicketIndex {
 					l, srv;
 				_.map(providers, p => {
 					l = p.provides.length;
+
 					while (l--) {
 						srv = p.provides[l];
 						if (!provision[srv])
@@ -587,7 +590,7 @@ class TicketIndex {
 							t.set("destination", dst);
 							t.lockField("destination");
 						}
-						if (operator) {
+						if (operator !== undefined) {
 							t.unlockField("operator");
 							t.set("operator", operator);
 							t.lockField("operator");
@@ -617,12 +620,13 @@ class TicketIndex {
 			tick = tickets[l];
 			if (tick.isInactive())
 				continue;
+			if (tick.id == tick_data.id)
+				tick.update(tick_data);
 			tick.unlockField("operator")
 				.unlockField("destination");
 			tick.set("operator", null);
 			tick.set("destination", null);
-			if (tick.id == tick_data.id)
-				tick.update(tick_data);
+
 		}
 		callback && callback(tickets);
 		return this.index.saveTickets(tickets);
@@ -665,7 +669,6 @@ class TicketIndex {
 						booking_method: source.booking_method,
 						history: source.history,
 						time_description: source.time_description,
-						initial_time_description: _.clone(source.time_description),
 
 						state: source.state,
 						called: 0,
