@@ -159,7 +159,7 @@ class AggregatorSection {
 
 	add(session) {
 		//only today
-		if (this.moment()
+		if (!session || this.moment()
 			.format('YYYY-MM-DD') !== session.dedication())
 			return this;
 

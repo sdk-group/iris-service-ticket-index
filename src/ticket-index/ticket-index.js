@@ -13,7 +13,6 @@ class TicketIndex {
 
 	init(config) {
 		this.queue_head_size = config.queue_head_size;
-		this.queue_head_throttle = config.queue_head_throttle_seconds * 1000 || 1000;
 	}
 
 	launch() {
@@ -374,54 +373,59 @@ class TicketIndex {
 				let ts = _.map(ticks, t => t.getSource());
 
 				//@FIXIT code must be crafted here, not in tickets
-				s_data.code = ts[0].code;
 				return confirm(ts);
 			})
 			.then(confirmed => {
-				if (confirmed.success) {
-					let keys = confirmed.keys;
-					let type = keys.length == 1 ? 'idle' : 'picker';
-					let data = keys.length == 1 ? keys : _.map(keys, k => ({
-						type: 'idle',
-						data: k
-					}));
-					s_data.description = {
-						data: data,
-						type: type
-					};
-					s_data.uses = keys;
+				if (!confirmed.success)
+					return confirmed;
 
-					return this.index.createSession(s_data)
-						.then(session => this.index.saveSession(session))
-						.then(session => {
-							confirmed.response = _(session.render())
-								.castArray()
-								.map(t => t.set("session", session.identifier()))
-								.value();
-							this.index.add(session);
-							return this.index.saveTickets(confirmed.response);
-						})
-						.then(res => {
-							confirmed.response = _.map(confirmed.response, t => t.serialize());
-							return confirmed;
-						});
-				}
-				return confirmed;
+				let keys = confirmed.keys;
+				let type = keys.length == 1 ? 'idle' : 'picker';
+				let data = keys.length == 1 ? keys : _.map(keys, k => ({
+					type: 'idle',
+					data: k
+				}));
+				s_data.description = {
+					data: data,
+					type: type
+				};
+				s_data.uses = keys;
+
+				return this.index.createSession(s_data)
+					.then(session => this.index.saveSession(session))
+					.then(session => {
+						confirmed.response = _(session.render())
+							.castArray()
+							.map(t => t.set("session", session.identifier()))
+							.value();
+						this.index.add(session);
+						return this.index.saveTickets(confirmed.response);
+					})
+					.then(res => {
+						confirmed.response = _.map(confirmed.response, t => t.serialize());
+						return confirmed;
+					});
 			});
 	}
 
 	actionCurrent({
 		workstation,
 		operator,
-		organization
+		organization,
+		state: state = ['processing', 'called'],
+		serialize: serialize = false
 	}) {
 		// let active = this.index.active(organization);
-		return this.index.filter(organization, {
+		let res = this.index.filter(organization, {
 			organization: organization,
 			service: '*',
 			destination: workstation,
 			operator: operator,
-			state: ['processing', 'called']
+			state: state
+		});
+		return _.map(res, t => {
+			let tick = this.index.ticket(organization, t);
+			return serialize ? tick.serialize() : tick;
 		});
 	}
 
@@ -463,7 +467,7 @@ class TicketIndex {
 				if (current.length > 0) {
 					let sc = this.index.section(organization);
 					let criteria = sc.isAppliable.bind(sc, flt);
-					curr_tick = this.index.ticket(organization, current[0]);
+					curr_tick = current[0];
 					response.current = curr_tick.serialize();
 					curr_session = this.index.session(organization, curr_tick.get("session"));
 					let next = curr_session.next(criteria);
@@ -474,7 +478,7 @@ class TicketIndex {
 				if (response.next)
 					return response;
 
-
+				//solver algo starts here
 				let all = this.index.filter(organization, flt);
 				let idx = (all.length > 0) ? all[0] : null;
 				if (idx !== null)

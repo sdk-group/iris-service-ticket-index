@@ -4,7 +4,7 @@ let moment = require('moment-timezone');
 
 
 module.exports = function (start, source, params) {
-	console.log('lo', start);
+	// console.log('lo', start);
 
 	function comparator(a, b) {
 		let atick = source[a],
