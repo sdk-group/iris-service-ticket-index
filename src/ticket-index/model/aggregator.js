@@ -11,7 +11,8 @@ let AggregatorSection = require("./aggregator-section.js");
 //ORDER PRESERVED
 const indexers_config = {
 	order: {
-		default: ['live-ordering', 'prebook-ordering']
+		default: ['live-ordering', 'prebook-ordering'],
+		live_priority: ['live-ordering', 'prebook-subpriority-ordering']
 	},
 	filter: {
 		default: ["universal"]
@@ -31,21 +32,37 @@ class Aggregator {
 		return this.data[this.keymap[section]];
 	}
 
+	_chooseOrderingConfig(keydata, gen_cfg) {
+		if (!keydata)
+			throw new Error("Orderconfig: Invalid section data.");
+		if (keydata.live_priority_ordering)
+			return gen_cfg.order.live_priority;
+		return gen_cfg.order.default;
+	}
+
+	_chooseFilteringConfig(keydata, gen_cfg) {
+		if (!keydata)
+			throw new Error("Filterconfig: Invalid section data.");
+		return gen_cfg.filter.default;
+	}
+
 	dissect(sections = false, keydata = {}, idx_config = indexers_config) {
 		if (sections.constructor === Array) {
 			let l = sections.length,
 				len = this.data.length,
 				inj,
-				prev, sname;
+				prev, sname, ocfg, fcfg;
 			while (l--) {
 				sname = sections[l];
 				prev = this.section(sname);
+				ocfg = this._chooseOrderingConfig(keydata[sname], idx_config);
+				fcfg = this._chooseFilteringConfig(keydata[sname], idx_config);
 				if (!prev) {
 					this.keymap[sname] = len++;
 					inj = new AggregatorSection(this.patchwerk, sname, keydata[sname]);
 					inj.setIndexers(
-						new Filter(idx_config.filter[sname] || idx_config.filter.default),
-						new Order(idx_config.order[sname] || idx_config.order.default)
+						new Filter(fcfg),
+						new Order(ocfg)
 					);
 					this.data.push(inj);
 				} else {
