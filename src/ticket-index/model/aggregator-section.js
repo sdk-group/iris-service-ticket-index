@@ -110,8 +110,7 @@ class AggregatorSection {
 	}
 
 	render() {
-		let result = [],
-			keys = Object.keys(this.keymap_active),
+		let keys = Object.keys(this.keymap_active),
 			l = keys.length,
 			item;
 		this.rendered = [];
@@ -124,6 +123,19 @@ class AggregatorSection {
 		this.validate();
 		return this.rendered;
 	}
+
+	allTickets() {
+		let result = [],
+			l = this.data.length,
+			item;
+		while (l--) {
+			item = this.data[l];
+			if (!item) continue;
+			result = result.concat(item.tickets());
+		}
+		return result;
+	}
+
 
 	getRendered() {
 		//can implement render expiration here
@@ -230,14 +242,6 @@ class AggregatorSection {
 				department: session.attachment(),
 				date: session.dedication()
 			})
-			.then(res => this.patchwerk.create('TicketSessionLookup', {
-				content: session.identifier()
-			}, {
-				code: session.code()
-			}))
-			.then(lookup => this.patchwerk.save(lookup, {
-				code: session.code()
-			}))
 			.then(res => session);
 	}
 

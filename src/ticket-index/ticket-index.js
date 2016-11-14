@@ -2,6 +2,7 @@
 
 let Index = require("./model/aggregator.js");
 let Dispenser = require("./model/dispenser.js");
+let hasIntersection = require("./model/util/has-intersection.js");
 let ticket_index = {};
 
 class TicketIndex {
@@ -19,7 +20,7 @@ class TicketIndex {
 		this.emitter.listenTask('queue.emit.head', (data) => {
 			// logger.info('queue.emit.head', data);
 
-			console.log("HEAD", data);
+			// console.log("HEAD", data);
 			return this.updateIndex(data)
 				.then(() => this._emitHead(data));
 		});
@@ -41,10 +42,10 @@ class TicketIndex {
 			.then(res => this.index.loadIfOutdated(data.organization))
 			.then(res => this.actionActiveHead(data))
 			.then((res) => {
-				console.log("STRUCT I", require('util')
-					.inspect(res, {
-						depth: null
-					}));
+				// console.log("STRUCT I", require('util')
+				// 	.inspect(res, {
+				// 		depth: null
+				// 	}));
 				let diff = process.hrtime(time);
 				console.log('ACTIVE HEAD IN %d mseconds', (diff[0] * 1e9 + diff[1]) / 1000000);
 				_.map(res, (ws_head, ws_id) => {
@@ -718,6 +719,49 @@ class TicketIndex {
 			.sortBy()
 			.sortedUniq()
 			.join('');
+	}
+
+
+	actionTodayTickets({
+		organization
+	}) {
+		let section = this.index.section(organization);
+		if (!section)
+			return [];
+		return section.allTickets();
+	}
+
+	actionQueryTodayTickets({
+		organization,
+		query,
+		keys
+	}) {
+		let section = this.index.section(organization);
+		if (!section)
+			return [];
+		let ticks = _.map(section.allTickets(), t => t.serialize());
+		let filtered = ticks;
+		if (query) {
+			_.unset(query, 'dedicated_date');
+			filtered = _.filter(_.compact(ticks), (tick) => {
+				return _.reduce(query, (acc, val, key) => {
+					let res = true;
+					if (!_.isPlainObject(val)) {
+						//OR
+						res = hasIntersection(val, tick.value[key]);
+					} else {
+						res = _.isEqual(val, tick.value[key]);
+					}
+					return res && acc;
+				}, true);
+			});
+		}
+		if (keys) {
+			filtered = _.filter(ticks, t => !!~keys.indexOf(t.id));
+		}
+		console.log("*******************************************", filtered);
+		return filtered;
+
 	}
 
 }
