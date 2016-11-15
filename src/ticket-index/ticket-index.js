@@ -728,7 +728,7 @@ class TicketIndex {
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
-		return section.allTickets();
+		return _.map(section.allTickets(), t => t.serialize());
 	}
 
 	actionQueryTodayTickets({
