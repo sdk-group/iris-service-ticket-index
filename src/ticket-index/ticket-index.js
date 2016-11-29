@@ -641,6 +641,7 @@ class TicketIndex {
 		ticket: tick_data
 	}) {
 		let session = this.index.session(tick_data.org_destination, tick_data.session);
+
 		let tickets = session.tickets();
 		return _.map(tickets, t => t.serialize());
 	}
@@ -678,7 +679,8 @@ class TicketIndex {
 						state: source.state,
 						called: 0,
 						expiry: source.expiry || 0,
-						user_info: source.user_info
+						user_info: source.user_info,
+						user_info_description: source.user_info_description
 					};
 				});
 				//@FIXIT do it through the main aggregator
