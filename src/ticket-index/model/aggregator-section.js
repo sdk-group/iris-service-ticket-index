@@ -189,18 +189,9 @@ class AggregatorSection {
 		return this;
 	}
 
-	_markUpdate(date) {
-		this._updated = date || this.moment()
-			.format('YYYY-MM-DD');
-	}
-
-	_getUpdated() {
-		return this._updated;
-	}
-
 	loadIfOutdated() {
 		//it is logical because only today sessions can be added
-		if (this._getUpdated() < this.moment()
+		if (this.data.length > 0 && this.data[0].dedication() < this.moment()
 			.format('YYYY-MM-DD')) {
 			console.log("OUTDATED");
 			this.flush();
@@ -238,7 +229,7 @@ class AggregatorSection {
 						this.add(Session(session_data, res[1]));
 					}
 				}
-				this._markUpdate(date);
+
 				// console.log("SESSIONS", this);
 				return this;
 			})
