@@ -733,24 +733,27 @@ class TicketIndex {
 
 
 	actionTodayTickets({
-		organization
+		organization,
+		active_sessions_only = false
 	}) {
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
-		return _.map(section.allTickets(), t => t.serialize());
+		return _.map((active_sessions_only ? section.activeTickets() : section.allTickets()), t => t.serialize());
 	}
 
 	actionQueryTodayTickets({
 		organization,
 		query,
-		keys
+		keys,
+		active_sessions_only = false
 	}) {
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
-		let ticks = _.map(section.allTickets(), t => t.serialize());
+		let ticks = _.map((active_sessions_only ? section.activeTickets() : section.allTickets()), t => t.serialize());
 		let filtered = ticks;
+		console.log("FILTEWRD", query);
 		if (query) {
 			_.unset(query, 'dedicated_date');
 			filtered = _.filter(_.compact(ticks), (tick) => {
@@ -758,9 +761,9 @@ class TicketIndex {
 					let res = true;
 					if (!_.isPlainObject(val)) {
 						//OR
-						res = hasIntersection(val, tick.value[key]);
+						res = hasIntersection(val, tick[key]);
 					} else {
-						res = _.isEqual(val, tick.value[key]);
+						res = _.isEqual(val, tick[key]);
 					}
 					return res && acc;
 				}, true);

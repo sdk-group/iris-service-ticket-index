@@ -136,6 +136,19 @@ class AggregatorSection {
 		return result;
 	}
 
+	activeTickets() {
+		let keys = Object.keys(this.keymap_active),
+			l = keys.length,
+			item;
+		let result = [];
+		while (l--) {
+			item = this.data[this.keymap_active[keys[l]]];
+			if (!item) continue;
+			if (!item.isInactive())
+				result = result.concat(item.tickets());
+		}
+		return result;
+	}
 
 	getRendered() {
 		//can implement render expiration here
