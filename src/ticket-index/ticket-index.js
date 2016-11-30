@@ -640,10 +640,18 @@ class TicketIndex {
 	actionRelatedTickets({
 		ticket: tick_data
 	}) {
-		let session = this.index.session(tick_data.org_destination, tick_data.session);
-
-		let tickets = session.tickets();
-		return _.map(tickets, t => t.serialize());
+		return this.index.loadIfOutdated(tick_data.org_destination)
+			.then(() => {
+				let session = this.index.session(tick_data.org_destination, tick_data.session);
+				if (!session)
+					return this.emitter.adTask("ticket", {
+							_action: "session-tickets",
+							session: tick_data.session
+						})
+						.then(res => res.tickets);
+				let tickets = session.tickets();
+				return _.map(tickets, t => t.serialize());
+			});
 	}
 
 
