@@ -644,7 +644,7 @@ class TicketIndex {
 			.then(() => {
 				let session = this.index.session(tick_data.org_destination, tick_data.session);
 				if (!session)
-					return this.emitter.adTask("ticket", {
+					return this.emitter.addTask("ticket", {
 							_action: "session-tickets",
 							session: tick_data.session
 						})
@@ -753,7 +753,7 @@ class TicketIndex {
 			return [];
 		let ticks = _.map((active_sessions_only ? section.activeTickets() : section.allTickets()), t => t.serialize());
 		let filtered = ticks;
-		console.log("FILTEWRD", query);
+		// console.log("FILTEWRD", query);
 		if (query) {
 			_.unset(query, 'dedicated_date');
 			filtered = _.filter(_.compact(ticks), (tick) => {
@@ -772,7 +772,7 @@ class TicketIndex {
 		if (keys) {
 			filtered = _.filter(ticks, t => !!~keys.indexOf(t.id));
 		}
-		console.log("*******************************************", filtered);
+		// console.log("*******************************************", filtered);
 		return filtered;
 
 	}

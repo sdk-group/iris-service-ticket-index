@@ -335,7 +335,7 @@ class AggregatorSection {
 		return Promise.map(b_data, t_data => {
 			t_data.booking_date = this.moment()
 				.format();
-			console.log("TDATA", t_data);
+			// console.log("TDATA", t_data);
 
 			let service_data;
 			return this.patchwerk.get('Service', {
