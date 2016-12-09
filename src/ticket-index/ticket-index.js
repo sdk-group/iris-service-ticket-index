@@ -470,7 +470,8 @@ class TicketIndex {
 					let criteria = sc.isAppliable.bind(sc, flt);
 					curr_tick = current[0];
 					response.current = curr_tick.serialize();
-					curr_session = this.index.session(organization, curr_tick.get("session"));
+					curr_session = this.index.session(organization, curr_tick.get("session")) || this.index.section(organization)
+						.sessionByLeaf(curr_tick.id);
 					let next = curr_session.next(criteria);
 					console.log("NEXT BY SESSIOn", next);
 					if (next)
@@ -498,7 +499,13 @@ class TicketIndex {
 	}) {
 		let anchestor = tick_data.inherits || tick_data.id;
 		let build_data = tick_data;
-		let session = this.index.session(tick_data.org_destination, tick_data.session);
+		let session = this.index.session(tick_data.org_destination, tick_data.session) ||
+			this.index.section(tick_data.org_destination)
+			.sessionByLeaf(tick_data.id);
+		if (!session)
+			return Promise.reject(new Error("Session not found"));
+		session.find(tick_data.id)
+			.set("session", session.identifier());
 		let tick;
 		let anchestor_tick = session.find(anchestor);
 		let generation = (anchestor_tick.get("inheritance_counter") || 0) + 1;
@@ -573,11 +580,18 @@ class TicketIndex {
 				filter_fn = function (entity) {
 					return services === '*' || !!~services.indexOf(entity.get("service"));
 				}
-				session = this.index.session(build_data.org_destination, build_data.session);
+				session = this.index.session(build_data.org_destination, build_data.session) ||
+					this.index.section(build_data.org_destination)
+					.sessionByLeaf(build_data.id);
+				if (!session)
+					return Promise.reject(new Error("Session not found"));
+				session.find(tick_data.id)
+					.set("session", session.identifier());
 				session.splittedRoute(filter_fn);
 				return this.index.saveSession(session);
 			})
 			.then(res => {
+				// console.log(session);
 				let tick = session.find(build_data.id);
 				tick.update(build_data);
 				let tickets = session.tickets(),
@@ -617,7 +631,13 @@ class TicketIndex {
 		ticket: tick_data,
 		callback: callback
 	}) {
-		let session = this.index.session(tick_data.org_destination, tick_data.session);
+		let session = this.index.session(tick_data.org_destination, tick_data.session) ||
+			this.index.section(tick_data.org_destination)
+			.sessionByLeaf(tick_data.id);
+		if (!session)
+			return Promise.reject(new Error("Session not found"));
+		session.find(tick_data.id)
+			.set("session", session.identifier());
 		let tickets = session.tickets(),
 			l = tickets.length,
 			tick;
@@ -642,13 +662,16 @@ class TicketIndex {
 	}) {
 		return this.index.loadIfOutdated(tick_data.org_destination)
 			.then(() => {
-				let session = this.index.session(tick_data.org_destination, tick_data.session);
-				if (!session)
+				let session = this.index.session(tick_data.org_destination, tick_data.session) ||
+					this.index.section(tick_data.org_destination)
+					.sessionByLeaf(tick_data.id);
+				if (!session) {
 					return this.emitter.addTask("ticket", {
 							_action: "session-tickets",
 							session: tick_data.session
 						})
 						.then(res => res.tickets);
+				}
 				let tickets = session.tickets();
 				return _.map(tickets, t => t.serialize());
 			});

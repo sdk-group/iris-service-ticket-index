@@ -38,6 +38,20 @@ class AggregatorSection {
 		return this.data[this.keymap_active[id]] || this.data[this.keymap_inactive[id]];
 	}
 
+	sessionByLeaf(t_id) {
+		let result,
+			l = this.data.length,
+			item, t_item;
+		while (l--) {
+			item = this.data[l];
+			if (!item) continue;
+			t_item = item.find(t_id);
+			if (t_item)
+				result = item;
+		}
+		return result;
+	}
+
 	ticket(idx) {
 		return this.rendered[idx];
 	}
@@ -46,7 +60,7 @@ class AggregatorSection {
 	updateLeaf(leaf) {
 		//@FIXIT: switch to ticket models
 
-		let session = this.session(leaf.session);
+		let session = this.session(leaf.session) || this.sessionByLeaf(leaf.id);
 		if (!session) {
 			global.logger && logger.error({
 				"module": "ticket-index",
