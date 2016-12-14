@@ -29,6 +29,13 @@ class TicketIndex {
 			return this.updateIndex(data);
 		});
 
+		this.emitter.listenTask('ticket-index.reload', (data) => {
+			console.log("FLUSH");
+			return this.fill(data.organization)
+				.then(res => Promise.map(_.castArray(data.organization), org => this._emitHead({
+					organization: org
+				})));
+		});
 
 		return this.fill()
 			.then(() => true);
@@ -67,12 +74,14 @@ class TicketIndex {
 	}
 
 
-	fill() {
+	fill(organizations) {
 		return this.emitter.addTask('workstation', {
-				_action: 'organization-data'
+				_action: 'organization-data',
+				organization: organizations
 			})
 			.then(res => {
 				let orgs = Object.keys(res);
+				console.log("filling", orgs);
 				let keydata = _.mapValues(res, pack => {
 					pack.org_merged.emit_path = pack.org_addr;
 					return pack.org_merged;
