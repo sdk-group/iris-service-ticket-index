@@ -12,7 +12,7 @@ let AggregatorSection = require("./aggregator-section.js");
 const indexers_config = {
 	order: {
 		default: ['live-ordering', 'prebook-ordering'],
-		live_priority: ['live-ordering', 'prebook-subpriority-ordering']
+		live_priority: ['live-ordering', 'prebook-ordering', 'live-priority-first']
 	},
 	filter: {
 		default: ["universal"]
@@ -35,8 +35,8 @@ class Aggregator {
 	_chooseOrderingConfig(keydata, gen_cfg) {
 		if (!keydata)
 			throw new Error("Orderconfig: Invalid section data.");
-		if (keydata.live_priority_ordering)
-			return gen_cfg.order.live_priority;
+		// if (keydata.live_priority_ordering)
+		// 	return gen_cfg.order.live_priority;
 		return gen_cfg.order.default;
 	}
 
@@ -46,23 +46,37 @@ class Aggregator {
 		return gen_cfg.filter.default;
 	}
 
+	_createOrderingIndexer(sname, keydata, idx_config) {
+		let ocfg = this._chooseOrderingConfig(keydata, idx_config);
+		let order = new Order(ocfg);
+		if (keydata.live_priority_ordering)
+			order.addMiddleware('live-priority-first');
+		if (keydata.separate_prebook_ordering)
+			order.addMiddleware('separate-prebook-ordering');
+		return order;
+	}
+
+	_createFilteringIndexer(sname, keydata, idx_config) {
+		let fcfg = this._chooseFilteringConfig(keydata, idx_config);
+		let filter = new Filter(fcfg);
+		return filter;
+	}
+
 	dissect(sections = false, keydata = {}, idx_config = indexers_config) {
 		if (sections.constructor === Array) {
 			let l = sections.length,
 				len = this.data.length,
 				inj,
-				prev, sname, ocfg, fcfg;
+				prev, sname;
 			while (l--) {
 				sname = sections[l];
 				prev = this.section(sname);
-				ocfg = this._chooseOrderingConfig(keydata[sname], idx_config);
-				fcfg = this._chooseFilteringConfig(keydata[sname], idx_config);
 				if (!prev) {
 					this.keymap[sname] = len++;
 					inj = new AggregatorSection(this.patchwerk, sname, keydata[sname]);
 					inj.setIndexers(
-						new Filter(fcfg),
-						new Order(ocfg)
+						this._createFilteringIndexer(sname, keydata[sname], idx_config),
+						this._createOrderingIndexer(sname, keydata[sname], idx_config)
 					);
 					this.data.push(inj);
 				} else {

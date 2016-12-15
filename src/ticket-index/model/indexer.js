@@ -8,6 +8,7 @@ class Indexer {
 			this._middleware[l] = require(`./${category}/${fns[l]}.js`);
 		}
 		this._chainsz = this._middleware.length;
+		this._category = category;
 	}
 
 	run(params, initial_idx, data) {
@@ -20,6 +21,11 @@ class Indexer {
 			// console.log(res);
 		}
 		return res;
+	}
+
+	addMiddleware(fn) {
+		this._middleware[this._chainsz] = require(`./${this._category}/${fn}.js`);
+		this._chainsz++;
 	}
 }
 
