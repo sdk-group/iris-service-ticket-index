@@ -519,6 +519,8 @@ class TicketIndex {
 		let anchestor_tick = session.find(anchestor);
 		let generation = (anchestor_tick.get("inheritance_counter") || 0) + 1;
 
+		let hst_i = tick_data.history.length - 2;
+
 		if (tick_data.id == anchestor)
 			anchestor_tick.update(tick_data);
 		anchestor_tick.set("inheritance_counter", generation);
@@ -548,10 +550,16 @@ class TicketIndex {
 					.virtualizeTicket(build_data);
 			})
 			.then(ticket => {
-				return this.index.saveTickets([ticket, anchestor_tick])
+				return this.index.saveTickets(ticket)
 			})
 			.then((tickets) => {
 				tick = tickets[0];
+				let hst = anchestor_tick.get("history");
+				hst[hst_i].context.offspring = tick.id;
+				anchestor_tick.set("history", hst);
+				return this.index.saveTickets(anchestor_tick);
+			})
+			.then((tickets) => {
 				session.virtualRoute(tick);
 				return this.index.saveSession(session);
 			})
