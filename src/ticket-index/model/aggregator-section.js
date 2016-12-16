@@ -70,9 +70,9 @@ class AggregatorSection {
 			});
 			return;
 		}
-
+		console.log("UPDATELEAF", leaf);
 		session.update(leaf.id, leaf);
-		// console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
+		console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
 		if (session.isInactive() && !!this.keymap_active[leaf.session]) {
 			console.log("swtiching to inactive", leaf.session);
 			let pos = this.keymap_active[leaf.session];
@@ -101,6 +101,7 @@ class AggregatorSection {
 		params.date = curr_moment.format('YYYY-MM-DD');
 		params.now = curr_moment.diff(curr_moment.clone()
 			.startOf('day'), 'seconds');
+		params.prebook_separation_interval = this.keydata.prebook_separation_interval;
 		this.ordering.run(params, false, this.rendered);
 		return this;
 	}
@@ -266,7 +267,7 @@ class AggregatorSection {
 					}
 				}
 				this._markUpdate(date);
-				// console.log("SESSIONS", this);
+				// console.log("SESSIONS", this.data);
 				return this;
 			})
 	}

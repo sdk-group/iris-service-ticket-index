@@ -12,7 +12,7 @@ let AggregatorSection = require("./aggregator-section.js");
 const indexers_config = {
 	order: {
 		default: ['live-ordering', 'prebook-ordering'],
-		live_priority: ['live-ordering', 'prebook-ordering', 'live-priority-first']
+		separate_prebook: ['live-ordering', 'separate-prebook-ordering']
 	},
 	filter: {
 		default: ["universal"]
@@ -35,8 +35,8 @@ class Aggregator {
 	_chooseOrderingConfig(keydata, gen_cfg) {
 		if (!keydata)
 			throw new Error("Orderconfig: Invalid section data.");
-		// if (keydata.live_priority_ordering)
-		// 	return gen_cfg.order.live_priority;
+		if (keydata.separate_prebook_ordering)
+			return gen_cfg.order.separate_prebook;
 		return gen_cfg.order.default;
 	}
 
@@ -51,8 +51,6 @@ class Aggregator {
 		let order = new Order(ocfg);
 		if (keydata.live_priority_ordering)
 			order.addMiddleware('live-priority-first');
-		if (keydata.separate_prebook_ordering)
-			order.addMiddleware('separate-prebook-ordering');
 		return order;
 	}
 
