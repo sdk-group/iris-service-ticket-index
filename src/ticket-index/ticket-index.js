@@ -423,8 +423,7 @@ class TicketIndex {
 		operator,
 		organization,
 		state: state = ['processing', 'called'],
-		serialize: serialize = false,
-		lock: lock = true
+		serialize: serialize = false
 	}) {
 		// let active = this.index.active(organization);
 		let res = this.index.filter(organization, {
@@ -443,7 +442,8 @@ class TicketIndex {
 	actionNext({
 		workstation,
 		operator,
-		organization
+		organization,
+		lock: lock = true
 	}) {
 		let curr_tick, curr_session;
 		let current = this.actionCurrent({
