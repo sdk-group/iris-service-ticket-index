@@ -423,7 +423,8 @@ class TicketIndex {
 		operator,
 		organization,
 		state: state = ['processing', 'called'],
-		serialize: serialize = false
+		serialize: serialize = false,
+		lock: lock = true
 	}) {
 		// let active = this.index.active(organization);
 		let res = this.index.filter(organization, {
@@ -492,9 +493,15 @@ class TicketIndex {
 				//solver algo starts here
 				let all = this.index.filter(organization, flt);
 				let idx = (all.length > 0) ? all[0] : null;
-				if (idx !== null)
-					response.next = this.index.ticket(organization, idx)
-					.serialize();
+				if (idx !== null) {
+					let n_tick = this.index.ticket(organization, idx);
+					if (lock) {
+						n_tick.set("operator", (operator ? operator : null));
+						n_tick.set("destination", (workstation ? _.castArray(workstation) : null));
+					}
+					console.log("N_TICK", this.index.ticket(organization, idx));
+					response.next = n_tick.serialize();
+				}
 				this.index.section(organization)
 					.invalidate();
 				return response;
