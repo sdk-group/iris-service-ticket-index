@@ -298,6 +298,7 @@ class TicketIndex {
 						let filter = {
 							organization: organization,
 							service: receiver_data.provides || [],
+							booking_method: receiver_data.filtering_method || "*",
 							destination: ws_id,
 							operator: op_id
 						};
@@ -328,6 +329,7 @@ class TicketIndex {
 							let filter = {
 								organization: organization,
 								service: receiver_data.provides || [],
+								booking_method: receiver_data.filtering_method || "*",
 								destination: ws_id,
 								state: ['postponed', 'registered', 'called', 'processing'],
 								operator: operator
@@ -362,6 +364,7 @@ class TicketIndex {
 				let filter = {
 					organization: organization,
 					service: op.provides,
+					booking_method: op.filtering_method || "*",
 					destination: workstation,
 					operator: operator
 				};
@@ -429,6 +432,7 @@ class TicketIndex {
 		let res = this.index.filter(organization, {
 			organization: organization,
 			service: '*',
+			booking_method: "*",
 			destination: workstation,
 			operator: operator,
 			state: state
@@ -471,6 +475,7 @@ class TicketIndex {
 				let flt = {
 					organization: organization,
 					service: op.provides,
+					booking_method: op.filtering_method || "*",
 					destination: workstation,
 					operator: operator,
 					state: ['registered']

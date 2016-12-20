@@ -3,7 +3,7 @@
 let hasIntersection = require("../util/has-intersection.js");
 
 module.exports = function (prefiltered, source, params) {
-	console.log("univ", prefiltered);
+	// console.log("univ", prefiltered);
 	let l = prefiltered.length,
 		i = -1,
 		src;
@@ -25,6 +25,11 @@ module.exports = function (prefiltered, source, params) {
 			continue;
 		}
 
+		if (params.booking_method !== "*" && !hasIntersection(params.booking_method, src.properties.booking_method)) {
+			prefiltered[i] = false;
+			// console.log("opr", params, src.properties);
+			continue;
+		}
 
 		if (params.state !== '*' && !~params.state.indexOf(src.properties.state)) {
 			prefiltered[i] = false;
@@ -46,6 +51,6 @@ module.exports = function (prefiltered, source, params) {
 
 
 	}
-	console.log(prefiltered);
+	// console.log(prefiltered);
 	return prefiltered;
 };
