@@ -788,6 +788,7 @@ class TicketIndex {
 		organization,
 		active_sessions_only = false
 	}) {
+		console.log("TODAY", organization);
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
@@ -805,28 +806,32 @@ class TicketIndex {
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
-		// console.log("FILTEWRD", query);
-		if (query) {
-			_.unset(query, 'dedicated_date');
-			filtered = _.filter(_.compact(ticks), (tick) => {
-				return _.reduce(query, (acc, val, key) => {
-					let res = true;
-					if (!_.isPlainObject(val)) {
-						//OR
-						res = hasIntersection(val, tick[key]);
-					} else {
-						res = _.isEqual(val, tick[key]);
-					}
-					return res && acc;
-				}, true);
-			});
-		}
-		if (keys) {
-			filtered = _.filter(ticks, t => !!~keys.indexOf(t.id));
-		}
-		// console.log("*******************************************", filtered);
-		return filtered;
 
+		return this.index.loadIfOutdated(organization)
+			.then(() => {
+				let ticks = _.map((active_sessions_only ? section.activeTickets() : section.allTickets()), t => t.serialize());
+				let filtered = ticks;
+				if (query) {
+					_.unset(query, 'dedicated_date');
+					filtered = _.filter(_.compact(ticks), (tick) => {
+						return _.reduce(query, (acc, val, key) => {
+							let res = true;
+							if (!_.isPlainObject(val)) {
+								//OR
+								res = hasIntersection(val, tick[key]);
+							} else {
+								res = _.isEqual(val, tick[key]);
+							}
+							return res && acc;
+						}, true);
+					});
+				}
+				if (keys) {
+					filtered = _.filter(ticks, t => !!~keys.indexOf(t.id));
+				}
+				// console.log("*******************************************", filtered);
+				return filtered;
+			});
 	}
 
 }
