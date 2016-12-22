@@ -791,7 +791,8 @@ class TicketIndex {
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
-		return _.map((active_sessions_only ? section.activeTickets() : section.allTickets()), t => t.serialize());
+		return this.index.loadIfOutdated(organization)
+			.then(() => _.map((active_sessions_only ? section.activeTickets() : section.allTickets()), t => t.serialize()));
 	}
 
 	actionQueryTodayTickets({
@@ -800,11 +801,10 @@ class TicketIndex {
 		keys,
 		active_sessions_only = false
 	}) {
+		console.log("QTODAY", organization);
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
-		let ticks = _.map((active_sessions_only ? section.activeTickets() : section.allTickets()), t => t.serialize());
-		let filtered = ticks;
 		// console.log("FILTEWRD", query);
 		if (query) {
 			_.unset(query, 'dedicated_date');
