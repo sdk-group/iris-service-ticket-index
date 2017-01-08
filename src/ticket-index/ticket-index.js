@@ -3,7 +3,7 @@
 let Index = require("./model/aggregator.js");
 let Dispenser = require("./model/dispenser.js");
 let hasIntersection = require("./model/util/has-intersection.js");
-let ticket_index = {};
+let head_timers = {};
 
 class TicketIndex {
 	constructor() {
@@ -14,6 +14,7 @@ class TicketIndex {
 
 	init(config) {
 		this.queue_head_size = config.queue_head_size;
+		this.queue_head_interval = config.queue_head_interval;
 	}
 
 	launch() {
@@ -42,6 +43,23 @@ class TicketIndex {
 	}
 
 	//API
+	_rescheduleHead({
+		organization,
+		size,
+		operator,
+		workstation
+	}) {
+		console.log("------#####-------->RESCH", organization, size, operator, workstation);
+		if (!this.queue_head_interval || operator || workstation)
+			return;
+		clearTimeout(head_timers[organization]);
+		head_timers[organization] = setTimeout(() => {
+			this._emitHead({
+				organization,
+				size
+			});
+		}, this.queue_head_interval)
+	}
 
 	_emitHead(data) {
 		let time = process.hrtime();
@@ -55,6 +73,7 @@ class TicketIndex {
 				// 	}));
 				let diff = process.hrtime(time);
 				console.log('ACTIVE HEAD IN %d mseconds', (diff[0] * 1e9 + diff[1]) / 1000000);
+				this._rescheduleHead(data);
 				_.map(res, (ws_head, ws_id) => {
 					_.map(ws_head, (head, user_id) => {
 						let to_join = ['queue.head', this.index.addr(data.organization), ws_id];
@@ -67,6 +86,7 @@ class TicketIndex {
 							addr,
 							data: head
 						});
+
 					});
 				});
 				return Promise.resolve(true);
@@ -75,23 +95,26 @@ class TicketIndex {
 
 
 	fill(organizations) {
+		let orgs = organizations;
 		return this.emitter.addTask('workstation', {
 				_action: 'organization-data',
-				organization: organizations
+				organization: orgs
 			})
 			.then(res => {
-				let orgs = Object.keys(res);
+				orgs = Object.keys(res);
 				console.log("filling", orgs);
 				let keydata = _.mapValues(res, pack => {
 					pack.org_merged.emit_path = pack.org_addr;
 					return pack.org_merged;
 				});
-
 				this.index.dissect(orgs, keydata);
 				return this.index.fill();
 			})
 			.then(() => this.index.render())
-			.then(() => this.index.order());
+			.then(() => this.index.order())
+			.then(() => _.map(orgs, organization => this._rescheduleHead({
+				organization
+			})));
 	}
 
 	fillIfEmpty(org) {
