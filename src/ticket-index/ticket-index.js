@@ -2,6 +2,7 @@
 
 let Index = require("./model/aggregator.js");
 let Dispenser = require("./model/dispenser.js");
+let HeadCache = require("./model/head-cache.js");
 let hasIntersection = require("./model/util/has-intersection.js");
 let head_timers = {};
 
@@ -15,6 +16,8 @@ class TicketIndex {
 	init(config) {
 		this.queue_head_size = config.queue_head_size;
 		this.queue_head_interval = config.queue_head_interval;
+		this.queue_head_debounce = config.queue_head_debounce || 500;
+		HeadCache.ttl(this.queue_head_debounce);
 	}
 
 	launch() {
@@ -49,7 +52,7 @@ class TicketIndex {
 		operator,
 		workstation
 	}) {
-		console.log("------#####-------->RESCH", organization, size, operator, workstation);
+		// console.log("------#####-------->RESCH", organization, size, operator, workstation);
 		if (!this.queue_head_interval || operator || workstation)
 			return;
 		clearTimeout(head_timers[organization]);
@@ -80,7 +83,7 @@ class TicketIndex {
 						let addr = {
 							user_id
 						};
-						console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
+						// console.log("EMIT HEAD", _.join(to_join, "."), _.map(head.live.tickets, 'label'), _.map(head.live.tickets, 'id'));
 						this.emitter.emit('broadcast', {
 							event: _.join(to_join, "."),
 							addr,
@@ -306,11 +309,12 @@ class TicketIndex {
 				providers: receivers,
 				occupation: occupation_map
 			}) => {
+				let receiver_data, cached, filter;
 				// console.log("RECEIVER", receivers);
 				// console.log("OCCUPATION", occupation_map);
 				return _.mapValues(occupation_map, (op_ids, ws_id) => {
 					return _.reduce(op_ids, (acc, op_id) => {
-						let receiver_data = receivers[ws_id] || receivers[op_id];
+						receiver_data = receivers[ws_id] || receivers[op_id];
 						if (!receiver_data) {
 							console.log("##############################################################################################");
 							console.log("RECEIVER MISSING", op_id, ws_id, occupation_map);
@@ -318,7 +322,12 @@ class TicketIndex {
 							return acc;
 						}
 
-						let filter = {
+						cached = HeadCache.getCache(organization, op_id, ws_id);
+						if (cached) {
+							acc[op_id] = cached;
+							return acc;
+						}
+						filter = {
 							organization: organization,
 							service: receiver_data.provides || [],
 							booking_method: receiver_data.filtering_method || "*",
@@ -326,6 +335,7 @@ class TicketIndex {
 							operator: op_id
 						};
 						acc[op_id] = this.takeHead(organization, filter, size);
+						HeadCache.setCache(acc[op_id], organization, op_id, ws_id);
 						return acc;
 					}, {});
 				});
@@ -344,12 +354,13 @@ class TicketIndex {
 				occupation: occupation_map
 			}) => {
 				// console.log("RECEIVER", receivers, occupation_map);
+				let receiver_data, cached, filter;
 
 				let pos = _(occupation_map)
 					.flatMap((op_ids, ws_id) => {
 						return _.map(op_ids, (operator) => {
-							let receiver_data = receivers[ws_id] || receivers[operator];
-							let filter = {
+							receiver_data = receivers[ws_id] || receivers[operator];
+							filter = {
 								organization: organization,
 								service: receiver_data.provides || [],
 								booking_method: receiver_data.filtering_method || "*",
@@ -825,7 +836,7 @@ class TicketIndex {
 		keys,
 		active_sessions_only = false
 	}) {
-		console.log("QTODAY", organization);
+		console.log("QTODAY", organization, query);
 		let section = this.index.section(organization);
 		if (!section)
 			return [];
