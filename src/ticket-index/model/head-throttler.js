@@ -40,7 +40,7 @@ class HeadThrottler {
 		console.log("TIME", time, time > this._ttl);
 		if (time > this._ttl) {
 			//ttl elapsed
-			this._run(func, args)();
+			setImmediate(this._run(func, args));
 		} else {
 			// ttl still not elapsed, set timeout if not set already
 			console.log("LEFT--------------------------------->\n", this._ttl - time);
