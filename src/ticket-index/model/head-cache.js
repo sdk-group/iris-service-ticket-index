@@ -15,6 +15,10 @@ class HeadCache {
 		let key = keyparts.join(".");
 		if (this._expired(key)) {
 			this.delCache(key);
+			console.log("HEADCACHE EXPIRED", key);
+		} else {
+			console.log("HEADCACHE CONSICTENT", key);
+
 		}
 		return this._content[key];
 	}

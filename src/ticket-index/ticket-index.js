@@ -3,6 +3,7 @@
 let Index = require("./model/aggregator.js");
 let Dispenser = require("./model/dispenser.js");
 let HeadCache = require("./model/head-cache.js");
+let HeadThrottler = require("./model/head-throttler.js");
 let hasIntersection = require("./model/util/has-intersection.js");
 let head_timers = {};
 
@@ -16,8 +17,9 @@ class TicketIndex {
 	init(config) {
 		this.queue_head_size = config.queue_head_size;
 		this.queue_head_interval = config.queue_head_interval;
-		this.queue_head_debounce = config.queue_head_debounce || 500;
-		HeadCache.ttl(this.queue_head_debounce);
+		this.queue_head_throttle = config.queue_head_throttle || 1000;
+		HeadCache.ttl(this.queue_head_throttle);
+		HeadThrottler.ttl(this.queue_head_throttle);
 	}
 
 	launch() {
@@ -26,7 +28,7 @@ class TicketIndex {
 
 			// console.log("HEAD", data);
 			return this.updateIndex(data)
-				.then(() => this._emitHead(data));
+				.then(() => HeadThrottler.runOrTrail(this._emitHead.bind(this), data));
 		});
 
 		this.emitter.listenTask('queue.update.head', (data) => {
@@ -63,6 +65,7 @@ class TicketIndex {
 			});
 		}, this.queue_head_interval)
 	}
+
 
 	_emitHead(data) {
 		let time = process.hrtime();
@@ -322,11 +325,11 @@ class TicketIndex {
 							return acc;
 						}
 
-						cached = HeadCache.getCache(organization, op_id, ws_id);
-						if (cached) {
-							acc[op_id] = cached;
-							return acc;
-						}
+						// cached = HeadCache.getCache(organization, op_id, ws_id);
+						// if (cached) {
+						// 	acc[op_id] = cached;
+						// 	return acc;
+						// }
 						filter = {
 							organization: organization,
 							service: receiver_data.provides || [],
@@ -335,7 +338,7 @@ class TicketIndex {
 							operator: op_id
 						};
 						acc[op_id] = this.takeHead(organization, filter, size);
-						HeadCache.setCache(acc[op_id], organization, op_id, ws_id);
+						// HeadCache.setCache(acc[op_id], organization, op_id, ws_id);
 						return acc;
 					}, {});
 				});
@@ -538,7 +541,7 @@ class TicketIndex {
 						n_tick.set("operator", (operator ? operator : null));
 						n_tick.set("destination", (workstation ? _.castArray(workstation) : null));
 					}
-					console.log("N_TICK", this.index.ticket(organization, idx));
+					// console.log("N_TICK", this.index.ticket(organization, idx));
 					response.next = n_tick.serialize();
 				}
 				this.index.section(organization)
