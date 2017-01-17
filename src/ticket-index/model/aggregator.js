@@ -169,7 +169,7 @@ class Aggregator {
 	}
 
 	saveTickets(tickets) {
-		console.log("SAVING TICKETS", _.map(tickets, 'id'));
+		console.log("SAVING TICKETS", _.map(_.castArray(tickets), 'id'));
 		return Promise.map(_.castArray(tickets), t => this.patchwerk.save(t, t.creation_params));
 	}
 

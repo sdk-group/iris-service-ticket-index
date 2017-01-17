@@ -74,13 +74,13 @@ class AggregatorSection {
 		session.update(leaf.id, leaf);
 		console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
 		if (session.isInactive() && !!this.keymap_active[leaf.session]) {
-			console.log("swtiching to inactive", leaf.session);
+			// console.log("swtiching to inactive", leaf.session);
 			let pos = this.keymap_active[leaf.session];
 			_.unset(this.keymap_active, leaf.session);
 			this.keymap_inactive[leaf.session] = pos;
 		}
 		if (!session.isInactive() && this.keymap_inactive[leaf.session]) {
-			console.log("swtiching to active", leaf.session);
+			// console.log("swtiching to active", leaf.session);
 			let pos = this.keymap_inactive[leaf.session];
 			_.unset(this.keymap_inactive, leaf.session);
 			this.keymap_active[leaf.session] = pos;
@@ -134,7 +134,7 @@ class AggregatorSection {
 			if (!item.isInactive())
 				this.rendered = this.rendered.concat(item.render());
 		}
-		console.log("RENDER");
+		// console.log("RENDER");
 		this.validate();
 		return this.rendered;
 	}
@@ -176,7 +176,7 @@ class AggregatorSection {
 	}
 
 	invalidate() {
-		console.log("INVALIDATE", this.constructor.name);
+		// console.log("INVALIDATE", this.constructor.name);
 		this._invalid = true;
 	}
 
@@ -185,7 +185,7 @@ class AggregatorSection {
 	}
 
 	validate() {
-		console.log("VALIDATE");
+		// console.log("VALIDATE");
 		this._invalid = false;
 	}
 
@@ -244,15 +244,11 @@ class AggregatorSection {
 		let date = spec_date || this.moment()
 			.format('YYYY-MM-DD');
 		this.flush();
-		return Promise.all([this.patchwerk.get('TicketSession', {
+		return Promise.mapSeries(["TicketSession", "Ticket"], type => this.patchwerk.get(type, {
 				department: this.name,
 				date: date,
 				counter: '*'
-			}), this.patchwerk.get('Ticket', {
-				department: this.name,
-				date: date,
-				counter: '*'
-			})])
+			}))
 			.then(res => {
 				// console.log(res);
 				let sessions = res[0],
@@ -268,6 +264,7 @@ class AggregatorSection {
 				}
 				this._markUpdate(date);
 				// console.log("SESSIONS", this.data);
+				// console.log("LOADED", this.allTickets());
 				return this;
 			})
 	}

@@ -26,7 +26,7 @@ class HeadThrottler {
 	_run(func, args) {
 		let key = args.organization;
 		return () => {
-			console.log("RUN TRAIL", this._timestamps[key] - _.now());
+			console.log("RUN TRAIL", _.now() - (this._timestamps[key] || 0));
 			this._timestamps[key] = _.now();
 			return func(args);
 		}

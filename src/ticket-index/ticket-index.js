@@ -66,6 +66,9 @@ class TicketIndex {
 		}, this.queue_head_interval)
 	}
 
+	actionForceUpdate(data) {
+		return this.updateIndex(data);
+	}
 
 	_emitHead(data) {
 		let time = process.hrtime();
@@ -556,7 +559,7 @@ class TicketIndex {
 		prehistory = []
 	}) {
 		let anchestor = tick_data.inherits || tick_data.id;
-		let build_data = tick_data;
+		let build_data = _.cloneDeep(tick_data);
 		let session = this.index.session(tick_data.org_destination, tick_data.session) ||
 			this.index.section(tick_data.org_destination)
 			.sessionByLeaf(tick_data.id);
@@ -604,6 +607,8 @@ class TicketIndex {
 			.then((tickets) => {
 				tick = tickets[0];
 				let hst = anchestor_tick.get("history");
+				console.log("ANCHESTOR", anchestor_tick);
+				console.log("OFFSPRING", tick);
 				hst[hst_i].context.offspring = tick.id;
 				anchestor_tick.set("history", hst);
 				return this.index.saveTickets(anchestor_tick);
