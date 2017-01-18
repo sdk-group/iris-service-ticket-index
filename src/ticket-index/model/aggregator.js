@@ -123,9 +123,9 @@ class Aggregator {
 			.filter(params);
 	}
 
-	updateLeaf(section, leaf) {
+	updateLeaf(section, leaf, operation) {
 		this.section(section)
-			.updateLeaf(leaf);
+			.updateLeaf(leaf, operation);
 	}
 
 	render(sections) {

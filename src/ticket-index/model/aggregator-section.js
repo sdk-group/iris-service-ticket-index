@@ -57,9 +57,8 @@ class AggregatorSection {
 	}
 
 	//update
-	updateLeaf(leaf) {
+	updateLeaf(leaf, operation = {}) {
 		//@FIXIT: switch to ticket models
-
 		let session = this.session(leaf.session) || this.sessionByLeaf(leaf.id);
 		if (!session) {
 			global.logger && logger.error({
@@ -70,9 +69,14 @@ class AggregatorSection {
 			});
 			return;
 		}
-		console.log("UPDATELEAF", leaf);
+		console.log("UPDATELEAF", leaf, operation);
+		let tick = session.find(leaf.id);
+		if (tick.checkOperationInterference(operation))
+			return;
+		tick.setLastOperation(operation);
+
 		session.update(leaf.id, leaf);
-		console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
+		// console.log("addrs", session.isInactive(), this.keymap_active[leaf.session], this.keymap_inactive[leaf.session]);
 		if (session.isInactive() && !!this.keymap_active[leaf.session]) {
 			// console.log("swtiching to inactive", leaf.session);
 			let pos = this.keymap_active[leaf.session];
