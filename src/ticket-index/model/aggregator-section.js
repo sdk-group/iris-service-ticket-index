@@ -328,6 +328,7 @@ class AggregatorSection {
 					h_entry.local_time = this.moment()
 						.format();
 				});
+				tick.set("booking_date", this.moment().format());
 				tick.set("history", hst);
 				tick.set("called", 0);
 				tick.set("inheritance_counter", 0);
