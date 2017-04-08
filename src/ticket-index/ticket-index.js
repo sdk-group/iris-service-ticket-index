@@ -562,8 +562,8 @@ class TicketIndex {
 			.sessionByLeaf(tick_data.id);
 		if (!session)
 			return Promise.reject(new Error("Session not found"));
-		session.find(tick_data.id)
-			.set("session", session.identifier());
+		let parent_tick = session.find(tick_data.id);
+		parent_tick.set("session", session.identifier());
 		let tick;
 		let anchestor_tick = session.find(anchestor);
 		let generation = (anchestor_tick.get("inheritance_counter") || 0) + 1;
@@ -603,7 +603,7 @@ class TicketIndex {
 			})
 			.then((tickets) => {
 				tick = tickets[0];
-				let hst = anchestor_tick.get("history");
+				let hst = parent_tick.get("history");
 				console.log("ANCHESTOR", anchestor_tick);
 				console.log("OFFSPRING", tick);
 				hst[hst_i].context.offspring = tick.id;
