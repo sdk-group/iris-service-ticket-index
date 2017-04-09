@@ -588,7 +588,8 @@ class TicketIndex {
 				event_name: 'register',
 				context: {
 					inherits: anchestor,
-					inheritance_level: generation
+					inheritance_level: generation,
+					parent: tick_data.id
 				}
 			})
 			.then((hst) => {
@@ -605,10 +606,11 @@ class TicketIndex {
 				tick = tickets[0];
 				let hst = parent_tick.get("history");
 				console.log("ANCHESTOR", anchestor_tick);
+				console.log("PARENT", parent_tick);
 				console.log("OFFSPRING", tick);
 				hst[hst_i].context.offspring = tick.id;
-				anchestor_tick.set("history", hst);
-				return this.index.saveTickets(anchestor_tick);
+				parent_tick.set("history", hst);
+				return this.index.saveTickets(parent_tick);
 			})
 			.then((tickets) => {
 				session.virtualRoute(tick);
